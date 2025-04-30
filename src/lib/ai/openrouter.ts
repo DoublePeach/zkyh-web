@@ -123,6 +123,8 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<any
     
     let data;
     try {
+      console.log('大模型返回的原始相应response：',response);
+      console.log('开始解析API响应JSON （responseText）:', responseText);
       data = JSON.parse(responseText);
       console.log('解析后的数据:', data);
     } catch (e) {
