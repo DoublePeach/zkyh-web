@@ -14,7 +14,11 @@ export async function POST(request: NextRequest) {
   try {
     console.log('接收到创建备考规划请求');
     
-    const body = await request.json();
+    // 确保正确处理请求体内的中文字符
+    const buffer = await request.arrayBuffer();
+    const text = new TextDecoder('utf-8').decode(buffer);
+    const body = JSON.parse(text);
+    
     const { userId, formData } = body;
     
     console.log('请求参数:', { userId });
@@ -36,7 +40,16 @@ export async function POST(request: NextRequest) {
     const planId = await dbCreateStudyPlan(userId, formData);
     console.log(`备考规划创建成功，ID: ${planId}`);
     
-    return NextResponse.json({ planId }, { status: 201 });
+    // 设置响应头，确保使用UTF-8编码
+    return new NextResponse(
+      JSON.stringify({ planId }), 
+      { 
+        status: 201,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
+        }
+      }
+    );
   } catch (error) {
     console.error('创建备考规划API错误:', error);
     return NextResponse.json(
