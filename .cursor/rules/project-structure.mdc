@@ -1,0 +1,54 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 项目结构
+
+本项目是一个医疗职称备考智能助手，使用Next.js全栈架构和PostgreSQL数据库。
+
+## 目录结构
+```
+zkyh-web/
+├── src/                    # 源代码目录
+│   ├── app/                # Next.js App Router结构
+│   │   ├── api/            # API路由
+│   │   │   ├── auth/       # 用户认证API
+│   │   │   ├── study-plans/# 学习计划API
+│   │   │   ├── modules/    # 学习模块API
+│   │   │   ├── tasks/      # 学习任务API
+│   │   │   ├── quizzes/    # 测验API
+│   │   │   └── ai/         # AI生成API
+│   │   ├── (auth)/         # 认证相关页面（登录/注册）
+│   │   ├── study-plan/     # 学习规划页面
+│   │   ├── learn/          # 学习内容页面
+│   │   ├── profile/        # 用户中心页面
+│   │   ├── page.tsx        # 首页
+│   │   └── layout.tsx      # 全局布局
+│   ├── components/         # 可复用组件
+│   │   ├── ui/             # UI组件库
+│   │   ├── forms/          # 表单组件
+│   │   ├── layouts/        # 布局组件
+│   │   └── shared/         # 公共组件
+│   ├── lib/                # 通用库和工具函数
+│   │   ├── utils/          # 工具函数
+│   │   ├── hooks/          # 自定义React Hooks
+│   │   ├── auth/           # 认证相关
+│   │   └── ai/             # AI集成逻辑
+│   ├── db/                 # 数据库相关代码
+│   │   ├── schema/         # 数据库表结构定义
+│   │   ├── migrations/     # 数据库迁移文件
+│   │   └── index.ts        # 数据库连接和导出
+│   ├── types/              # TypeScript类型定义
+│   └── store/              # 状态管理
+├── public/                 # 静态资源
+├── drizzle/                # Drizzle迁移文件和配置
+└── .env                    # 环境变量配置
+```
+
+## 技术栈
+- 前端: Next.js 14+ (App Router), React 18, TypeScript, Tailwind CSS, Shadcn UI
+- 状态管理: Zustand, React Query, SWR
+- 表单处理: React Hook Form, Zod
+- 数据库: PostgreSQL, Drizzle ORM
+- AI集成: OpenAI API, LangChain.js

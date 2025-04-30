@@ -1,0 +1,274 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# AI集成设计
+
+该项目使用OpenAI API和LangChain.js来实现AI驱动的个性化学习方案生成。以下是主要的AI集成模块和策略。
+
+## OpenAI API配置
+
+```typescript
+// src/lib/ai/openai.ts
+import { OpenAI } from 'openai';
+
+// 初始化OpenAI客户端
+export const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// 预设模型
+export const GPT_MODEL = 'gpt-4o';
+
+// 添加错误处理的AI请求包装函数
+export async function generateCompletion(
+  prompt: string,
+  options: {
+    temperature?: number;
+    max_tokens?: number;
+    model?: string;
+  } = {}
+) {
+  const { temperature = 0.7, max_tokens = 2000, model = GPT_MODEL } = options;
+  
+  try {
+    const response = await openai.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model,
+      temperature,
+      max_tokens,
+    });
+    
+    return response.choices[0]?.message?.content || '';
+  } catch (error) {
+    console.error('OpenAI API错误:', error);
+    throw new Error('AI生成失败，请稍后再试');
+  }
+}
+```
+
+## LangChain集成
+
+```typescript
+// src/lib/ai/chains.ts
+import { PromptTemplate } from '@langchain/core/prompts';
+import { StringOutputParser } from '@langchain/core/output_parsers';
+import { ChatOpenAI } from '@langchain/openai';
+import { StructuredOutputParser } from 'langchain/output_parsers';
+import { z } from 'zod';
+
+// 使用环境变量初始化ChatOpenAI
+const model = new ChatOpenAI({
+  openAIApiKey: process.env.OPENAI_API_KEY,
+  modelName: 'gpt-4o',
+  temperature: 0.7,
+});
+
+// 解析器定义，确保输出符合预期结构
+const studyPlanOutputSchema = z.object({
+  title: z.string(),
+  overview: z.string(),
+  totalDays: z.number(),
+  modules: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      order: z.number(),
+      durationDays: z.number(),
+      importance: z.number(),
+      difficulty: z.number(),
+      dailyTasks: z.array(
+        z.object({
+          day: z.number(),
+          title: z.string(),
+          description: z.string(),
+          estimatedMinutes: z.number(),
+        })
+      ),
+    })
+  ),
+});
+
+// 创建解析器
+const parser = StructuredOutputParser.fromZodSchema(studyPlanOutputSchema);
+
+// 创建提示模板
+const planPromptTemplate = PromptTemplate.fromTemplate(`
+你是一位医疗职称考试专家，为医护人员制定个性化的备考计划。
+根据用户提供的以下信息，生成一个详细的学习计划：
+
+考试信息：
+- 考试类型: {profession}
+- 目标职称: {targetTitle}
+- 考试日期: {examDate}
+- 需要考试的科目: {subjects}
+
+学习基础：
+- 基础评估: {foundationLevel}
+- 工作年限: {workYears}
+
+学习时间安排：
+- 每周学习天数: {daysPerWeek}
+- 工作日学习时间: {workdayHours}小时
+- 周末学习时间: {weekendHours}小时
+- 固定休息日设置: {restDays}
+
+请生成一个系统性的学习计划，包括：
+1. 总体学习计划概述
+2. 分阶段学习模块，每个模块包含：
+   - 标题
+   - 描述
+   - 重要性评分(1-10)
+   - 难度评分(1-10)
+   - 持续时间(天)
+3. 每日具体学习任务，包含：
+   - 标题
+   - 描述
+   - 预计完成时间(分钟)
+
+{format_instructions}
+`);
+
+// 创建学习计划生成链
+export async function generateStudyPlan(input: {
+  profession: string;
+  targetTitle: string;
+  examDate: string;
+  subjects: string[];
+  foundationLevel: string;
+  workYears: number;
+  daysPerWeek: number;
+  workdayHours: number;
+  weekendHours: number;
+  restDays: string;
+}) {
+  // 设置格式说明
+  const formatInstructions = parser.getFormatInstructions();
+  
+  // 创建提示
+  const prompt = await planPromptTemplate.format({
+    ...input,
+    format_instructions: formatInstructions,
+  });
+  
+  // 创建并执行链
+  const chain = model.pipe(new StringOutputParser());
+  const result = await chain.invoke(prompt);
+  
+  try {
+    // 解析结果
+    return parser.parse(result);
+  } catch (error) {
+    console.error('解析AI输出失败:', error);
+    throw new Error('生成计划格式错误，请重试');
+  }
+}
+```
+
+## 学习进度分析
+
+```typescript
+// src/lib/ai/progress-analyzer.ts
+import { PromptTemplate } from '@langchain/core/prompts';
+import { StringOutputParser } from '@langchain/core/output_parsers';
+import { ChatOpenAI } from '@langchain/openai';
+
+const model = new ChatOpenAI({
+  openAIApiKey: process.env.OPENAI_API_KEY,
+  modelName: 'gpt-4o',
+  temperature: 0.5,
+});
+
+const progressPromptTemplate = PromptTemplate.fromTemplate(`
+分析以下用户的学习进度数据，并提供专业的学习建议：
+
+用户信息：
+- 专业类别: {profession}
+- 目标职称: {targetTitle}
+- 考试科目: {subjects}
+
+学习进度：
+- 已完成任务数: {completedTasks} / {totalTasks}
+- 总体进度: {overallProgress}%
+- 各模块进度: {modulesProgress}
+- 测验正确率: {quizAccuracy}%
+- 薄弱环节: {weakAreas}
+
+请提供：
+1. 总体学习状况评估
+2. 学习效率分析
+3. 针对薄弱环节的具体建议
+4. 根据进度和考试日期的时间规划调整
+5. 激励性建议和下一步行动计划
+
+回答应专业、具体且针对医疗职称备考的特点给出建议。
+`);
+
+export async function analyzeProgress(input: {
+  profession: string;
+  targetTitle: string;
+  subjects: string[];
+  completedTasks: number;
+  totalTasks: number;
+  overallProgress: number;
+  modulesProgress: string;
+  quizAccuracy: number;
+  weakAreas: string[];
+}) {
+  // 创建提示
+  const prompt = await progressPromptTemplate.format(input);
+  
+  // 创建并执行链
+  const chain = model.pipe(new StringOutputParser());
+  const result = await chain.invoke(prompt);
+  
+  return result;
+}
+```
+
+## 策略模式实现
+
+为了支持不同的AI模型和生成策略，项目使用策略模式设计：
+
+```typescript
+// src/lib/ai/strategies/PlanGenerationStrategy.ts
+export interface PlanGenerationStrategy {
+  generatePlan(userData: any): Promise<any>;
+}
+
+// OpenAI策略实现
+// src/lib/ai/strategies/OpenAIPlanStrategy.ts
+import { PlanGenerationStrategy } from './PlanGenerationStrategy';
+import { generateStudyPlan } from '../chains';
+
+export class OpenAIPlanStrategy implements PlanGenerationStrategy {
+  async generatePlan(userData: any) {
+    return generateStudyPlan(userData);
+  }
+}
+
+// 策略上下文
+// src/lib/ai/PlanGenerator.ts
+import { PlanGenerationStrategy } from './strategies/PlanGenerationStrategy';
+import { OpenAIPlanStrategy } from './strategies/OpenAIPlanStrategy';
+
+export class PlanGenerator {
+  private strategy: PlanGenerationStrategy;
+  
+  constructor(strategy?: PlanGenerationStrategy) {
+    // 默认使用OpenAI策略
+    this.strategy = strategy || new OpenAIPlanStrategy();
+  }
+  
+  setStrategy(strategy: PlanGenerationStrategy) {
+    this.strategy = strategy;
+  }
+  
+  async generatePlan(userData: any) {
+    return this.strategy.generatePlan(userData);
+  }
+}
+```
+
+使用策略模式，可以在未来轻松切换不同的AI模型或接口，如Anthropic的Claude、本地部署的开源模型等，而不需要修改大量代码。

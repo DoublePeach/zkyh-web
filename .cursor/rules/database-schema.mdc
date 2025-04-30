@@ -1,0 +1,162 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 数据库模型设计
+
+项目使用Drizzle ORM和PostgreSQL，以下是根据PRD文档设计的数据模型。
+
+## 用户模型 (Users)
+```typescript
+// src/db/schema/users.ts
+import { pgTable, serial, text, timestamp, integer } from 'drizzle-orm/pg-core';
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  username: text('username').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  profession: text('profession').notNull(), // 专业类别(医疗/护理/药技)
+  currentTitle: text('current_title').notNull(), // 当前职称
+  targetTitle: text('target_title').notNull(), // 目标职称
+  workYears: integer('work_years'), // 工作年限
+  studyTimePerDay: integer('study_time_per_day'), // 每日学习时间(小时)
+  examDate: timestamp('exam_date'), // 目标考试日期
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+```
+
+## 学习计划模型 (StudyPlans)
+```typescript
+// src/db/schema/studyPlans.ts
+import { pgTable, serial, text, timestamp, integer, boolean, foreignKey } from 'drizzle-orm/pg-core';
+import { users } from './users';
+
+export const studyPlans = pgTable('study_plans', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  title: text('title').notNull(),
+  overview: text('overview').notNull(),
+  profession: text('profession').notNull(),
+  targetTitle: text('target_title').notNull(),
+  totalDays: integer('total_days').notNull(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+```
+
+## 学习模块模型 (StudyModules)
+```typescript
+// src/db/schema/studyModules.ts
+import { pgTable, serial, text, timestamp, integer, foreignKey } from 'drizzle-orm/pg-core';
+import { studyPlans } from './studyPlans';
+
+export const studyModules = pgTable('study_modules', {
+  id: serial('id').primaryKey(),
+  planId: integer('plan_id').notNull().references(() => studyPlans.id),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  order: integer('order').notNull(),
+  durationDays: integer('duration_days').notNull(),
+  importance: integer('importance').notNull(), // 重要性评分(1-10)
+  difficulty: integer('difficulty').notNull(), // 难度评分(1-10)
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+```
+
+## 每日任务模型 (DailyTasks)
+```typescript
+// src/db/schema/dailyTasks.ts
+import { pgTable, serial, text, timestamp, integer, boolean, foreignKey } from 'drizzle-orm/pg-core';
+import { studyModules } from './studyModules';
+
+export const dailyTasks = pgTable('daily_tasks', {
+  id: serial('id').primaryKey(),
+  moduleId: integer('module_id').notNull().references(() => studyModules.id),
+  day: integer('day').notNull(), // 计划第几天
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  learningContent: text('learning_content').notNull(), // 学习内容(富文本)
+  estimatedMinutes: integer('estimated_minutes').notNull(), // 预计完成时间(分钟)
+  isCompleted: boolean('is_completed').default(false).notNull(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+```
+
+## 测验模型 (Quizzes)
+```typescript
+// src/db/schema/quizzes.ts
+import { pgTable, serial, text, timestamp, integer, foreignKey } from 'drizzle-orm/pg-core';
+import { dailyTasks } from './dailyTasks';
+
+export const quizzes = pgTable('quizzes', {
+  id: serial('id').primaryKey(),
+  taskId: integer('task_id').notNull().references(() => dailyTasks.id),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  passScore: integer('pass_score').notNull(),
+  timeLimit: integer('time_limit'), // 时间限制(分钟)
+  attempts: integer('attempts').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+```
+
+## 问题模型 (Questions)
+```typescript
+// src/db/schema/questions.ts
+import { pgTable, serial, text, timestamp, integer, jsonb, foreignKey } from 'drizzle-orm/pg-core';
+import { quizzes } from './quizzes';
+
+export const questions = pgTable('questions', {
+  id: serial('id').primaryKey(),
+  quizId: integer('quiz_id').notNull().references(() => quizzes.id),
+  type: text('type').notNull(), // 问题类型(single_choice, multiple_choice, text)
+  content: text('content').notNull(),
+  options: jsonb('options'), // JSON格式存储选项数组
+  answer: text('answer').notNull(), // 答案
+  explanation: text('explanation').notNull(), // 答案解析
+  points: integer('points').notNull(), // 分值
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+```
+
+## 用户进度模型 (UserProgress)
+```typescript
+// src/db/schema/userProgress.ts
+import { pgTable, serial, timestamp, integer, foreignKey } from 'drizzle-orm/pg-core';
+import { users } from './users';
+import { dailyTasks } from './dailyTasks';
+
+export const userProgress = pgTable('user_progress', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  taskId: integer('task_id').notNull().references(() => dailyTasks.id),
+  progress: integer('progress').default(0).notNull(), // 进度百分比(0-100)
+  timeSpent: integer('time_spent').default(0).notNull(), // 花费时间(分钟)
+  lastAccessedAt: timestamp('last_accessed_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+```
+
+每个模型都应该在单独的文件中定义，并在统一的入口点导出：
+
+```typescript
+// src/db/schema/index.ts
+export * from './users';
+export * from './studyPlans';
+export * from './studyModules';
+export * from './dailyTasks';
+export * from './quizzes';
+export * from './questions';
+export * from './userProgress';
+```

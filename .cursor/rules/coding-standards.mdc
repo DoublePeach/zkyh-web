@@ -1,0 +1,162 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# 编码规范
+
+## 基本原则
+
+- 代码应当简洁、易读、可维护
+- 使用统一的代码风格和命名约定
+- 代码应包含详细注释
+- 数据库字段应包含完整说明
+- 对话时使用中文
+- API 应遵循 RESTful 设计风格
+
+## 代码注释规范
+
+### 文件头注释
+
+每个文件顶部应包含以下信息：
+
+```typescript
+/**
+ * @description 文件功能描述
+ * @author 郝桃桃
+ * @date 创建日期
+ */
+```
+
+### 函数/方法注释
+
+每个函数或方法应包含以下注释：
+
+```typescript
+/**
+ * @description 函数功能描述
+ * @param {类型} 参数名 - 参数描述
+ * @returns {类型} - 返回值描述
+ * @example
+ * // 示例代码
+ */
+```
+
+### 组件注释
+
+React 组件应包含以下注释：
+
+```typescript
+/**
+ * @component 组件名称
+ * @description 组件功能描述
+ * @prop {类型} 属性名 - 属性描述
+ * @example
+ * // 示例代码
+ */
+```
+
+### 代码块注释
+
+复杂逻辑应当添加注释说明实现思路：
+
+```typescript
+// 计算用户学习进度
+const progress = totalCompleted / totalModules * 100;
+```
+
+## 数据库字段注释规范
+
+使用 Drizzle ORM 时，每个字段应包含详细注释：
+
+```typescript
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),             // 用户唯一标识
+  name: varchar('name', { length: 255 }),    // 用户姓名
+  email: varchar('email', { length: 255 }),  // 用户邮箱，用于登录
+  createdAt: timestamp('created_at'),        // 创建时间
+  updatedAt: timestamp('updated_at'),        // 更新时间
+});
+```
+
+## RESTful API 设计规范
+
+### URI 命名
+
+- 使用名词复数形式表示资源集合：`/users`, `/study-plans`
+- 使用 ID 标识特定资源：`/users/123`, `/study-plans/456`
+- 使用嵌套资源表示从属关系：`/users/123/study-plans`
+
+### HTTP 方法
+
+- GET：获取资源
+- POST：创建资源
+- PUT：完全更新资源
+- PATCH：部分更新资源
+- DELETE：删除资源
+
+### 示例
+
+```typescript
+// GET /api/users - 获取所有用户
+// GET /api/users/123 - 获取指定用户
+// POST /api/users - 创建新用户
+// PUT /api/users/123 - 更新用户全部信息
+// PATCH /api/users/123 - 更新用户部分信息
+// DELETE /api/users/123 - 删除用户
+```
+
+### 响应状态码
+
+- 200：成功
+- 201：创建成功
+- 204：删除成功
+- 400：请求错误
+- 401：未授权
+- 403：禁止访问
+- 404：资源不存在
+- 500：服务器错误
+
+### 响应格式
+
+统一使用 JSON 格式：
+
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "操作成功"
+}
+```
+
+## 命名规范
+
+### 文件命名
+
+- React 组件：使用 PascalCase，如 `UserProfile.tsx`
+- 工具函数文件：使用 kebab-case，如 `date-utils.ts`
+- API 路由：使用 kebab-case，如 `user-profile.ts`
+
+### 变量命名
+
+- 变量和函数：使用 camelCase，如 `getUserData`
+- 常量：使用大写 SNAKE_CASE，如 `MAX_RETRY_COUNT`
+- 类和组件：使用 PascalCase，如 `UserProfileComponent`
+- 布尔类型变量：使用 is/has/should 前缀，如 `isLoading`, `hasPermission`
+
+## 项目目录结构遵循
+
+确保代码放在正确的目录中：
+
+- `/src/app` - 页面路由
+- `/src/components` - 可复用组件
+- `/src/db/schema` - 数据库模型
+- `/src/lib` - 工具函数和库
+- `/src/store` - 状态管理
+
+## 语言规范
+
+- 在开发过程中，与用户的对话应使用中文
+- 代码变量/函数命名使用英文
+- 代码注释使用中文
+- 文档使用中文
