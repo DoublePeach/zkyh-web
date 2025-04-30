@@ -3,3 +3,85 @@ description:
 globs:
 alwaysApply: false
 ---
+# 备考规划生成规则
+
+## 备考规划生成流程
+
+医卫职称备考助手根据用户填写的调查问卷信息，自动生成个性化的备考规划。生成流程如下：
+
+1. 用户填写调查问卷，提供以下信息：
+   - 专业类别（医疗类/护理类/药技类）
+   - 当前职称等级
+   - 目标职称等级
+   - 每日可用学习时间
+   - 计划考试日期
+
+2. 系统根据用户信息生成个性化备考规划，包括：
+   - 总体学习周期安排
+   - 每日学习任务
+   - 阶段性测试计划
+   - 重点内容推荐
+
+## 数据模型关系
+
+备考规划相关的数据模型关系如下：
+
+- `users` - 用户信息
+- `studyPlans` - 备考规划主表
+- `studyModules` - 学习模块，属于备考规划
+- `dailyTasks` - 每日任务，属于学习模块
+- `quizzes` - 测试，属于学习模块
+- `questions` - 题目，属于测试
+- `userProgress` - 用户学习进度
+
+## 备考规划算法逻辑
+
+备考规划生成算法需要考虑以下因素：
+
+### 1. 根据专业和目标职称确定学习内容
+
+```typescript
+// 根据专业和目标职称获取学习内容
+function getStudyContent(profession: string, targetTitle: string) {
+  // 返回适合该专业和目标职称的学习内容列表
+}
+```
+
+### 2. 根据考试日期和每日学习时间计算学习进度
+
+```typescript
+// 计算学习进度安排
+function calculateStudySchedule(examDate: Date, studyTimePerDay: string, totalContent: number) {
+  // 根据考试日期、每日学习时间和总内容量，计算每日学习任务量
+}
+```
+
+### 3. 生成阶段性测试
+
+```typescript
+// 生成测试计划
+function generateQuizSchedule(startDate: Date, endDate: Date, totalModules: number) {
+  // 根据学习时间和模块数量，生成合理的测试计划
+}
+```
+
+## 备考规划API
+
+备考规划相关的API定义：
+
+```typescript
+// POST /api/study-plans - 创建备考规划
+// GET /api/study-plans/:id - 获取备考规划详情
+// GET /api/study-plans/:id/modules - 获取备考规划的学习模块
+// GET /api/study-plans/:id/daily-tasks - 获取备考规划的每日任务
+// GET /api/study-plans/:id/quizzes - 获取备考规划的测试
+```
+
+## 备考规划页面
+
+备考规划相关的页面：
+
+- `/survey` - 备考信息调查问卷
+- `/study-plan/generated` - 生成的备考规划展示
+- `/study-plan/:id` - 备考规划详情
+- `/study-plan/:id/modules/:moduleId` - 学习模块详情

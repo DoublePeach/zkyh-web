@@ -3,3 +3,205 @@ description:
 globs:
 alwaysApply: false
 ---
+# 前端 UI 规范
+
+## 设计系统
+
+医卫职称备考助手应用使用统一的设计风格，主要基于 shadcn/ui 组件库，并使用 Tailwind CSS 进行样式定制。
+
+### 色彩系统
+
+- 主色：靛蓝色 `indigo-500`/`indigo-600`
+- 次要色：紫色 `purple-500`，蓝色 `blue-500` 
+- 中性色：灰色 `gray-50` 到 `gray-900`
+- 语义色：
+  - 成功：绿色 `green-500`
+  - 警告：黄色 `yellow-500`
+  - 错误：红色 `red-500`
+  - 信息：蓝色 `blue-500`
+
+### 排版
+
+- 标题 H1：`text-2xl font-bold`
+- 标题 H2：`text-xl font-semibold`
+- 标题 H3：`text-lg font-medium`
+- 正文：`text-base`
+- 小字体：`text-sm`
+- 超小字体：`text-xs`
+
+### 间距系统
+
+使用 Tailwind 的间距系统：
+
+- 最小间距：`space-y-1` / `space-x-1` (0.25rem)
+- 小间距：`space-y-2` / `space-x-2` (0.5rem)
+- 中等间距：`space-y-4` / `space-x-4` (1rem)
+- 大间距：`space-y-6` / `space-x-6` (1.5rem)
+- 超大间距：`space-y-8` / `space-x-8` (2rem)
+
+### 圆角
+
+- 小圆角：`rounded` (0.25rem)
+- 中等圆角：`rounded-md` (0.375rem)
+- 大圆角：`rounded-lg` (0.5rem)
+- 全圆角：`rounded-full`
+
+## 组件规范
+
+### 按钮
+
+```tsx
+// 主要按钮
+<Button className="bg-indigo-600 hover:bg-indigo-700">
+  确认
+</Button>
+
+// 次要按钮
+<Button variant="outline">
+  取消
+</Button>
+
+// 链接按钮
+<Button variant="link">
+  了解更多
+</Button>
+```
+
+### 输入框
+
+```tsx
+<div>
+  <Label htmlFor="email">邮箱</Label>
+  <Input id="email" placeholder="请输入邮箱地址" />
+</div>
+```
+
+### 卡片
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle>标题</CardTitle>
+    <CardDescription>描述信息</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <p>主要内容</p>
+  </CardContent>
+  <CardFooter>
+    <Button>操作按钮</Button>
+  </CardFooter>
+</Card>
+```
+
+### 单选框/复选框
+
+```tsx
+<RadioGroup value={value} onValueChange={setValue}>
+  <div className="flex items-center space-x-2">
+    <RadioGroupItem id="option1" value="option1" />
+    <Label htmlFor="option1">选项一</Label>
+  </div>
+</RadioGroup>
+```
+
+## 布局规范
+
+### 页面布局
+
+每个页面应该遵循一致的布局结构：
+
+```tsx
+<div className="min-h-screen bg-gray-50">
+  {/* 顶部导航 */}
+  <header className="bg-white py-4 px-4 shadow-sm">
+    <div className="container mx-auto">
+      {/* 导航内容 */}
+    </div>
+  </header>
+  
+  {/* 主要内容 */}
+  <main className="container mx-auto px-4 py-6">
+    {/* 页面内容 */}
+  </main>
+</div>
+```
+
+### 响应式设计
+
+使用 Tailwind 的响应式前缀设计不同屏幕尺寸下的布局：
+
+```tsx
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  {/* 卡片内容 */}
+</div>
+```
+
+## 交互规范
+
+### 加载状态
+
+显示加载状态：
+
+```tsx
+<Button disabled={loading}>
+  {loading ? "加载中..." : "提交"}
+</Button>
+```
+
+### 表单验证
+
+表单验证错误提示：
+
+```tsx
+<div>
+  <Label htmlFor="email">邮箱</Label>
+  <Input id="email" className={errors.email ? "border-red-500" : ""} />
+  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
+</div>
+```
+
+### 消息提示
+
+使用 Sonner 提供消息提示：
+
+```tsx
+import { toast } from 'sonner';
+
+// 成功消息
+toast.success("操作成功");
+
+// 错误消息
+toast.error("操作失败");
+```
+
+## 图标使用
+
+使用 Lucide React 提供的图标：
+
+```tsx
+import { User, Mail, Lock } from 'lucide-react';
+
+<div className="flex items-center">
+  <User className="w-5 h-5 mr-2" />
+  <span>用户信息</span>
+</div>
+```
+
+## 动画效果
+
+使用 Tailwind 的过渡效果添加简单动画：
+
+```tsx
+<div className="transition-all duration-300 hover:shadow-lg">
+  {/* 内容 */}
+</div>
+```
+
+## 无障碍设计
+
+确保界面符合无障碍标准：
+
+- 使用语义化 HTML 标签
+- 添加适当的 `aria-*` 属性
+- 确保颜色对比度符合 WCAG 标准
+- 键盘导航支持

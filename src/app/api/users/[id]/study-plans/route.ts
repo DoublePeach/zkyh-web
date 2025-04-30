@@ -18,9 +18,12 @@ type RouteParams = {
  */
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  context: RouteParams
 ) {
   try {
+    // 等待参数解析完成
+    const { params } = context;
+    
     // Next.js要求在App Router中正确处理params
     if (!params || typeof params !== 'object') {
       console.error('Missing or invalid params object');
@@ -30,7 +33,8 @@ export async function GET(
       );
     }
     
-    const userId = params.id;
+    // 安全地访问ID
+    const userId = String(params.id || '');
     console.log('处理用户备考规划请求，用户ID:', userId);
     
     if (!userId) {

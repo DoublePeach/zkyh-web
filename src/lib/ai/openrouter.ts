@@ -107,6 +107,7 @@ Please ensure the returned JSON format is correct for easy parsing by the system
     }
     
     console.log('OpenRouter API response successful, parsing results...');
+    console.log('大模型返回结果Response:', response);
     const responseText = await response.text();
     console.log('Response length:', responseText.length);
     
@@ -116,6 +117,7 @@ Please ensure the returned JSON format is correct for easy parsing by the system
     let data;
     try {
       data = JSON.parse(responseText);
+      console.log('大模型返回的结果并解析为JSON格式 Parsed data:', data);
     } catch (e) {
       console.error('Failed to parse API response JSON:', e);
       console.error('Raw response length:', responseText.length);

@@ -3,3 +3,355 @@ description:
 globs:
 alwaysApply: false
 ---
+# 组件和页面结构
+
+项目使用Next.js App Router架构，以下是主要页面和组件的设计规范。
+
+## 页面结构
+
+### 首页 (Home)
+```typescript
+// src/app/page.tsx
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth/options';
+
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+  const isLoggedIn = !!session;
+  
+  return (
+    <main className="min-h-screen">
+      {/* 顶部导航 */}
+      <header className="bg-white shadow-sm">
+        {/* ... */}
+      </header>
+      
+      {/* 英雄区域 */}
+      <section className="py-16 bg-gradient-to-b from-blue-50 to-white">
+        <div className="container mx-auto text-center">
+          <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl lg:text-6xl">
+            医疗职称备考智能助手
+          </h1>
+          <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
+            AI驱动的个性化学习方案，帮助医疗专业人员高效备考
+          </p>
+          <div className="mt-10">
+            {isLoggedIn ? (
+              <Link href="/study-plan">
+                <Button size="lg" className="bg-primary hover:bg-primary/90">
+                  开始备考规划
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/login">
+                <Button size="lg" className="bg-primary hover:bg-primary/90">
+                  立即开始
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+      
+      {/* 核心功能区 */}
+      <section className="py-16">
+        <div className="container mx-auto">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+            为什么选择我们的备考助手
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* 功能卡片1 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                AI个性化学习规划
+              </h3>
+              <p className="text-gray-600">
+                基于您的个人情况，智能生成定制化的学习路径
+              </p>
+            </div>
+            
+            {/* 功能卡片2 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                系统性学习进度跟踪
+              </h3>
+              <p className="text-gray-600">
+                清晰展示学习进度，突出重点难点，助您高效复习
+              </p>
+            </div>
+            
+            {/* 功能卡片3 */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                高质量考试内容和测验
+              </h3>
+              <p className="text-gray-600">
+                涵盖各职称级别的专业考试内容，巩固所学知识
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      {/* 底部导航 */}
+      <footer className="py-6 bg-gray-100">
+        {/* ... */}
+      </footer>
+    </main>
+  );
+}
+```
+
+### 用户信息收集页 (Survey)
+```typescript
+// src/app/survey/page.tsx
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
+import { Form } from '@/components/ui/form';
+
+// 验证schema
+const surveySchema = z.object({
+  // ...表单字段
+});
+
+export default function SurveyPage() {
+  const [step, setStep] = useState(1);
+  const router = useRouter();
+  const form = useForm<z.infer<typeof surveySchema>>({
+    resolver: zodResolver(surveySchema),
+    defaultValues: {
+      // ...默认值
+    },
+  });
+  
+  // 处理表单提交
+  async function onSubmit(values: z.infer<typeof surveySchema>) {
+    try {
+      // 发送到AI生成API
+      const response = await fetch('/api/ai/generate-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      
+      if (!response.ok) {
+        throw new Error('计划生成失败');
+      }
+      
+      const data = await response.json();
+      router.push(`/study-plan/${data.planId}`);
+    } catch (error) {
+      console.error('提交失败:', error);
+    }
+  }
+  
+  return (
+    <div className="container mx-auto py-10">
+      <div className="max-w-2xl mx-auto">
+        {/* 进度条 */}
+        <div className="mb-8">
+          <div className="h-2 bg-gray-200 rounded-full">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${(step / 4) * 100}%` }}
+            />
+          </div>
+          <div className="text-sm text-gray-500 text-right mt-2">
+            步骤 {step}/4
+          </div>
+        </div>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* 根据步骤显示不同表单字段 */}
+            {step === 1 && (
+              <div className="space-y-4">
+                {/* 考试基本信息 */}
+                {/* ... */}
+              </div>
+            )}
+            
+            {step === 2 && (
+              <div className="space-y-4">
+                {/* 学习基础评估 */}
+                {/* ... */}
+              </div>
+            )}
+            
+            {step === 3 && (
+              <div className="space-y-4">
+                {/* 学习时间安排 */}
+                {/* ... */}
+              </div>
+            )}
+            
+            {step === 4 && (
+              <div className="space-y-4">
+                {/* 最终确认 */}
+                {/* ... */}
+              </div>
+            )}
+            
+            {/* 导航按钮 */}
+            <div className="flex justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(s => Math.max(1, s - 1))}
+                disabled={step === 1}
+              >
+                上一步
+              </Button>
+              
+              {step < 4 ? (
+                <Button
+                  type="button"
+                  onClick={() => setStep(s => Math.min(4, s + 1))}
+                >
+                  下一步
+                </Button>
+              ) : (
+                <Button type="submit">
+                  生成备考计划
+                </Button>
+              )}
+            </div>
+          </form>
+        </Form>
+      </div>
+    </div>
+  );
+}
+```
+
+### 学习计划页 (Study Plan)
+```typescript
+// src/app/study-plan/[id]/page.tsx
+// 展示生成的学习计划总览
+```
+
+### 学习内容页 (Learning)
+```typescript
+// src/app/learn/[taskId]/page.tsx
+// 显示具体的学习内容和测验
+```
+
+## 公共组件
+
+### 底部导航栏
+```typescript
+// src/components/layout/bottom-nav.tsx
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, BookOpen, User } from 'lucide-react';
+
+export function BottomNav() {
+  const pathname = usePathname();
+  
+  const links = [
+    {
+      href: '/',
+      label: '首页',
+      icon: Home,
+      active: pathname === '/',
+    },
+    {
+      href: '/learn',
+      label: '学习',
+      icon: BookOpen,
+      active: pathname.startsWith('/learn'),
+    },
+    {
+      href: '/profile',
+      label: '我的',
+      icon: User,
+      active: pathname.startsWith('/profile'),
+    },
+  ];
+  
+  return (
+    <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 py-2">
+      <div className="flex justify-around">
+        {links.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className={`flex flex-col items-center ${
+              link.active ? 'text-primary' : 'text-gray-500'
+            }`}
+          >
+            <link.icon size={24} />
+            <span className="text-xs mt-1">{link.label}</span>
+          </Link>
+        ))}
+      </div>
+    </nav>
+  );
+}
+```
+
+### 学习进度条组件
+```typescript
+// src/components/ui/progress-card.tsx
+// 显示学习进度条和统计信息
+```
+
+### 测验问题卡片
+```typescript
+// src/components/quiz/question-card.tsx
+// 展示测验问题并处理用户回答
+```
+
+## 布局结构
+
+```typescript
+// src/app/layout.tsx
+import { type Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { BottomNav } from '@/components/layout/bottom-nav';
+import { ThemeProvider } from '@/components/theme/theme-provider';
+import { Toaster } from '@/components/ui/toaster';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: '医疗职称备考智能助手',
+  description: 'AI驱动的个性化医疗职称备考助手',
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="zh-CN">
+      <body className={inter.className}>
+        <ThemeProvider attribute="class" defaultTheme="light">
+          <div className="flex flex-col min-h-screen">
+            <main className="flex-1 pb-16">{children}</main>
+            <BottomNav />
+          </div>
+          <Toaster />
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+```typescript
+// src/app/(auth)/layout.tsx
+// 认证页面专用布局，去除底部导航
+```
