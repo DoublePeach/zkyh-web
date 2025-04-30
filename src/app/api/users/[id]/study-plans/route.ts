@@ -21,20 +21,9 @@ export async function GET(
   context: RouteParams
 ) {
   try {
-    // 等待参数解析完成
-    const { params } = context;
-    
-    // Next.js要求在App Router中正确处理params
-    if (!params || typeof params !== 'object') {
-      console.error('Missing or invalid params object');
-      return NextResponse.json(
-        { error: '请求参数错误' },
-        { status: 400 }
-      );
-    }
-    
-    // 安全地访问ID
-    const userId = String(params.id || '');
+    // 在Next.js 15中，params需要先await
+    const params = await context.params;
+    const userId = params.id;
     console.log('处理用户备考规划请求，用户ID:', userId);
     
     if (!userId) {
@@ -56,4 +45,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}
