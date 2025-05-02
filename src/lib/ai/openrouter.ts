@@ -22,27 +22,60 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<any
   try {
     console.log('开始生成备考方案...');
     
-    // 计算距离考试的天数
-    const examDate = new Date(surveyData.examDate);
+    // 计算考试日期（默认为每年4月13日）
+    const examYear = parseInt(surveyData.examYear);
+    const examDate = new Date(examYear, 3, 13); // 月份从0开始，所以4月是3
     const today = new Date();
     const daysUntilExam = Math.max(1, Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
     console.log(`距离考试还有${daysUntilExam}天`);
     
-    // 获取专业类别、职称等级和学习时间的中文描述
-    const professionInChinese = getProfessionName(surveyData.profession);
-    const currentTitleInChinese = getTitleName(surveyData.currentTitle);
-    const targetTitleInChinese = getTitleName(surveyData.targetTitle);
-    const studyTimeInChinese = getStudyTimeName(surveyData.studyTimePerDay);
+    // 获取相关中文描述
+    const titleLevel = surveyData.titleLevel === 'junior' ? '初级护师' : 
+                      surveyData.titleLevel === 'mid' ? '主管护师' : 
+                      surveyData.otherTitleLevel;
+                      
+    const examStatus = surveyData.examStatus === 'first' ? '首次参加考试' : '已通过部分科目';
+    
+    // 生成学习基础描述
+    let studyBaseDescription = '';
+    if(surveyData.examStatus === 'first') {
+      studyBaseDescription = surveyData.overallLevel === 'weak' ? '基础薄弱，需要从头开始' :
+                           surveyData.overallLevel === 'medium' ? '有一定基础，部分内容需要加强' :
+                           '基础扎实，需要系统复习';
+    } else {
+      // 对于已通过部分科目的情况，列出需要考试的科目及基础水平
+      studyBaseDescription = '已选科目基础情况：\n';
+      if(surveyData.subjects.basic) {
+        studyBaseDescription += `- 基础知识：${getLevelDescription(surveyData.subjectLevels.basic)}\n`;
+      }
+      if(surveyData.subjects.related) {
+        studyBaseDescription += `- 相关专业知识：${getLevelDescription(surveyData.subjectLevels.related)}\n`;
+      }
+      if(surveyData.subjects.professional) {
+        studyBaseDescription += `- 专业知识：${getLevelDescription(surveyData.subjectLevels.professional)}\n`;
+      }
+      if(surveyData.subjects.practical) {
+        studyBaseDescription += `- 实践能力：${getLevelDescription(surveyData.subjectLevels.practical)}\n`;
+      }
+    }
+    
+    // 学习时间描述
+    const weekdaysCountDesc = getWeekdaysCountDescription(surveyData.weekdaysCount);
+    const weekdayHoursDesc = getHoursDescription(surveyData.weekdayHours, '工作日');
+    const weekendHoursDesc = getHoursDescription(surveyData.weekendHours, '周末');
     
     // 构建中文提示词
     const prompt = `你是一位专业的医卫职称备考规划专家，请根据以下用户信息生成一个详细的备考规划，包括学习模块和每日任务安排。
 
 用户信息:
-- 专业类别: ${professionInChinese}
-- 当前职称: ${currentTitleInChinese}
-- 目标职称: ${targetTitleInChinese}
-- 每日可用学习时间: ${studyTimeInChinese}
-- 距离考试还有${daysUntilExam}天
+- 报考职称: ${titleLevel}
+- 考试状态: ${examStatus}
+- 学习基础: ${studyBaseDescription}
+- 学习时间安排: 
+  * 每周工作日学习: ${weekdaysCountDesc}
+  * ${weekdayHoursDesc}
+  * ${weekendHoursDesc}
+- 距离考试还有${daysUntilExam}天，考试日期: ${examDate.toLocaleDateString('zh-CN')}
 
 请返回一个JSON对象，包含以下内容(字段名称保持英文，内容使用中文):
 1. 备考方案总览(overview)：简要描述整体备考安排和建议
@@ -61,7 +94,7 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<any
    - 学习内容(learningContent)
    - 预计完成时间(estimatedMinutes)：分钟
 
-备考规划应根据用户的专业类别、目标职称和可用学习时间定制，总天数不应超过用户距离考试的天数。
+备考规划应根据用户的职称等级、考试状态、学习基础和可用学习时间定制，总天数不应超过用户距离考试的天数。
 请确保返回的JSON格式正确，便于系统解析。请不要在JSON前后添加任何额外的说明或描述。`;
 
     // 准备API请求数据 - 使用UTF-8编码的中文内容
@@ -150,7 +183,7 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<any
       console.error('无法解析返回的内容:', parseError);
       
       // 手动实现：创建备选备考方案
-      return createFallbackStudyPlan(professionInChinese, targetTitleInChinese, daysUntilExam);
+      return createFallbackStudyPlan(titleLevel, daysUntilExam);
     }
   } catch (error) {
     console.error('生成备考方案失败:', error);
@@ -159,42 +192,48 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<any
 }
 
 /**
- * @description 获取专业名称
+ * @description 获取学习基础水平描述
  */
-function getProfessionName(profession: string): string {
+function getLevelDescription(level: string): string {
   const map: Record<string, string> = {
-    'medical': '医疗类',
-    'nursing': '护理类',
-    'pharmacy': '药技类'
+    'low': '了解较少（★）',
+    'medium': '一般了解（★★）',
+    'high': '熟悉掌握（★★★）'
   };
-  return map[profession] || '未知专业';
+  return map[level] || '未知水平';
 }
 
 /**
- * @description 获取职称名称
+ * @description 获取工作日学习天数描述
  */
-function getTitleName(title: string): string {
+function getWeekdaysCountDescription(count: string): string {
   const map: Record<string, string> = {
-    'none': '无职称',
-    'junior': '初级职称',
-    'mid': '中级职称',
-    'associate': '副高级',
-    'senior': '正高级'
+    '1-2': '每周1-2天',
+    '3-4': '每周3-4天',
+    '5': '每个工作日（每周5天）'
   };
-  return map[title] || '未知职称';
+  return map[count] || '未指定天数';
 }
 
 /**
  * @description 获取学习时间描述
  */
-function getStudyTimeName(studyTime: string): string {
-  const map: Record<string, string> = {
-    '<1': '少于1小时',
-    '1-2': '1-2小时',
-    '2-4': '2-4小时',
-    '4+': '4小时以上'
-  };
-  return map[studyTime] || '未知学习时间';
+function getHoursDescription(hours: string, type: string): string {
+  let desc = '';
+  
+  if (type === '工作日') {
+    desc = hours === '<1' ? '工作日每天学习不到1小时' :
+           hours === '1-2' ? '工作日每天学习1-2小时' :
+           hours === '2-3' ? '工作日每天学习2-3小时' :
+           '工作日每天学习3小时以上';
+  } else {
+    desc = hours === '<2' ? '周末每天学习不到2小时' :
+           hours === '2-4' ? '周末每天学习2-4小时' :
+           hours === '4-6' ? '周末每天学习4-6小时' :
+           '周末每天学习6小时以上';
+  }
+  
+  return desc;
 }
 
 /**
@@ -270,7 +309,7 @@ function tryParseJSON(text: string): any {
 /**
  * 当解析失败时创建一个备选备考方案
  */
-function createFallbackStudyPlan(profession: string, targetTitle: string, daysUntilExam: number): any {
+function createFallbackStudyPlan(titleLevel: string, daysUntilExam: number): any {
   console.log('创建备选备考方案');
   
   // 创建一个基本的方案，包含较少的模块/任务
@@ -280,8 +319,8 @@ function createFallbackStudyPlan(profession: string, targetTitle: string, daysUn
   const modules = [];
   const tasks = [];
   
-  // 根据专业获取常见模块主题
-  const moduleTopics = getProfessionModules(profession);
+  // 根据职称等级获取常见模块主题
+  const moduleTopics = getNursingModules();
   
   // 创建模块
   for (let i = 0; i < numModules; i++) {
@@ -310,39 +349,21 @@ function createFallbackStudyPlan(profession: string, targetTitle: string, daysUn
   }
   
   return {
-    overview: `这是一个为期${daysUntilExam}天的${profession}专业人员准备${targetTitle}认证的学习计划。重点关注关键模块和每日任务。`,
+    overview: `这是一个为期${daysUntilExam}天的护理专业人员准备${titleLevel}认证的学习计划。重点关注关键模块和每日任务。`,
     modules,
     tasks
   };
 }
 
 /**
- * 根据专业获取模块主题
+ * 获取护理相关模块主题
  */
-function getProfessionModules(profession: string): Array<{title: string, description: string}> {
-  if (profession.includes('护理')) {
-    return [
-      { title: '护理学基础', description: '核心护理概念和患者护理。' },
-      { title: '护理评估', description: '全面的患者评估技术。' },
-      { title: '药理学', description: '药物管理和药物知识。' },
-      { title: '内外科护理', description: '各种医疗条件下的患者护理。' },
-      { title: '专科护理', description: '儿科、产科和精神科护理。' }
-    ];
-  } else if (profession.includes('医疗')) {
-    return [
-      { title: '临床诊断', description: '诊断程序和评估。' },
-      { title: '药物治疗', description: '治疗性药物管理。' },
-      { title: '内科医学', description: '常见医疗条件和治疗。' },
-      { title: '专科领域', description: '心脏病学、神经病学和其他专科。' },
-      { title: '患者管理', description: '全面的护理计划和执行。' }
-    ];
-  } else {
-    return [
-      { title: '药物学', description: '药物分类和应用。' },
-      { title: '药房实践', description: '配药程序和规定。' },
-      { title: '临床药学', description: '以患者为中心的药物护理。' },
-      { title: '药物计算', description: '剂量计算和配方。' },
-      { title: '药事法规', description: '药房实践的法律和伦理方面。' }
-    ];
-  }
+function getNursingModules(): Array<{title: string, description: string}> {
+  return [
+    { title: '护理学基础', description: '核心护理概念和患者护理。' },
+    { title: '护理评估', description: '全面的患者评估技术。' },
+    { title: '药理学', description: '药物管理和药物知识。' },
+    { title: '内外科护理', description: '各种医疗条件下的患者护理。' },
+    { title: '专科护理', description: '儿科、产科和精神科护理。' }
+  ];
 } 

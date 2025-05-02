@@ -28,21 +28,24 @@ export async function createStudyPlan(userId: number | string, formData: SurveyF
     
     // 2. 计算开始日期和结束日期
     const startDate = new Date();
-    const endDate = new Date(formData.examDate);
+    
+    // 使用考试年份计算考试日期（默认每年4月13日）
+    const examYear = parseInt(formData.examYear);
+    const endDate = new Date(examYear, 3, 13); // 月份从0开始，所以4月是3
     
     // 3. 计算总天数
     const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     
     // 4. 准备备考规划数据
-    const planTitle = `${getProfessionName(formData.profession)}${getTitleName(formData.targetTitle)}备考规划`;
+    const planTitle = `护理职称(${formData.titleLevel === 'other' ? formData.otherTitleLevel : (formData.titleLevel === 'junior' ? '初级护师' : '主管护师')})备考规划`;
     
     // 5. 保存备考规划到数据库
     const [plan] = await db.insert(studyPlans).values({
       userId: userIdNum,
       title: planTitle,
       overview: planData.overview,
-      profession: formData.profession,
-      targetTitle: formData.targetTitle,
+      profession: 'nursing', // 现在默认是护理类
+      targetTitle: formData.titleLevel,
       totalDays: totalDays,
       startDate: startDate,
       endDate: endDate,

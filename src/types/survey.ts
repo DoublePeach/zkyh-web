@@ -8,20 +8,33 @@
  * @description 调查表单数据类型
  */
 export interface SurveyFormData {
-  // 专业类别：医疗类/护理类/药技类
-  profession: 'medical' | 'nursing' | 'pharmacy';
+  // 考试基本信息
+  titleLevel: 'junior' | 'mid' | 'other'; // 初级护师、主管护师、其他
+  otherTitleLevel: string; // 若选择"其他"则填写
+  examStatus: 'first' | 'partial'; // 首次参加考试、已通过部分科目
+  examYear: string; // 考试年份
   
-  // 当前职称：无/初级/中级
-  currentTitle: 'none' | 'junior' | 'mid';
+  // 考试科目选择（若已通过部分科目才需填写）
+  subjects: {
+    basic: boolean; // 基础知识
+    related: boolean; // 相关专业知识
+    professional: boolean; // 专业知识
+    practical: boolean; // 实践能力
+  };
   
-  // 目标职称：中级/副高/正高
-  targetTitle: 'mid' | 'associate' | 'senior';
+  // 学习基础评估
+  overallLevel: 'weak' | 'medium' | 'strong'; // 基础薄弱、有一定基础、基础扎实
+  subjectLevels: {
+    basic: 'low' | 'medium' | 'high'; // 基础知识水平
+    related: 'low' | 'medium' | 'high'; // 相关专业知识水平
+    professional: 'low' | 'medium' | 'high'; // 专业知识水平
+    practical: 'low' | 'medium' | 'high'; // 实践能力水平
+  };
   
-  // 每日学习时间：<1小时/1-2小时/2-4小时/4+小时
-  studyTimePerDay: '<1' | '1-2' | '2-4' | '4+';
-  
-  // 计划考试日期
-  examDate: string;
+  // 学习时间安排
+  weekdaysCount: '1-2' | '3-4' | '5'; // 每周学习天数
+  weekdayHours: '<1' | '1-2' | '2-3' | '3+'; // 工作日每天学习小时数
+  weekendHours: '<2' | '2-4' | '4-6' | '6+'; // 周末每天学习小时数
 }
 
 /**
