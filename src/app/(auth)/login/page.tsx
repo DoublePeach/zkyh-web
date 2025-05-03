@@ -7,7 +7,7 @@ export default function LoginPage() {
       <div className="text-center space-y-2">
         <h1 className="text-2xl font-bold">账号登录</h1>
         <p className="text-sm text-gray-500">
-          登录您的账号，继续备考之旅
+          登录您的账号，管理员和学员均可使用此入口
         </p>
       </div>
       

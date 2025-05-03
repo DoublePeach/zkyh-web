@@ -49,15 +49,22 @@ export function LoginForm() {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || '登录失败');
+        const errorData = await response.json();
+        throw new Error(errorData.error || '登录失败');
       }
       
-      const userData = await response.json();
-      setUser(userData.user);
+      const result = await response.json();
       
-      toast.success('登录成功');
-      router.push('/');
+      // 检查是否为管理员账户
+      if (result.isAdmin) {
+        toast.success('管理员登录成功');
+        router.push('/admin/dashboard');
+      } else {
+        // 普通用户登录
+        setUser(result.user);
+        toast.success('登录成功');
+        router.push('/');
+      }
     } catch (error) {
       console.error('登录错误:', error);
       toast.error(error instanceof Error ? error.message : '登录失败，请重试');
