@@ -7,63 +7,64 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-
-interface NursingDiscipline {
-  id: number;
-  name: string;
-  description: string;
-  imageUrl?: string;
-}
+import { toast } from "sonner";
+import { 
+  getAllNursingDisciplines, 
+  deleteNursingDiscipline, 
+  NursingDiscipline 
+} from "@/lib/services/nursing-discipline-service";
 
 export default function NursingDisciplinesPage() {
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    // 这里模拟从API获取数据
-    // 实际项目中应该使用fetch调用后端API
-    setTimeout(() => {
-      setDisciplines([
-        {
-          id: 1,
-          name: "内科护理",
-          description: "心血管、呼吸、消化、血液、内分泌等系统疾病的护理",
-          imageUrl: "/images/disciplines/internal.png",
-        },
-        {
-          id: 2,
-          name: "外科护理",
-          description: "外伤、手术前后、骨科等外科疾病的护理",
-          imageUrl: "/images/disciplines/surgery.png",
-        },
-        {
-          id: 3,
-          name: "妇产科护理",
-          description: "女性生殖系统疾病、产前产后及新生儿的护理",
-          imageUrl: "/images/disciplines/obstetrics.png",
-        },
-        {
-          id: 4,
-          name: "儿科护理",
-          description: "儿童常见疾病预防和护理、生长发育指导",
-          imageUrl: "/images/disciplines/pediatrics.png",
-        },
-        {
-          id: 5,
-          name: "急救护理",
-          description: "急危重症的紧急救治和护理",
-          imageUrl: "/images/disciplines/emergency.png",
-        },
-        {
-          id: 6,
-          name: "社区护理",
-          description: "社区居民健康管理、慢病护理和健康教育",
-          imageUrl: "/images/disciplines/community.png",
-        },
-      ]);
+  // 加载护理学科数据
+  const loadDisciplines = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getAllNursingDisciplines();
+      if (response.success && response.data) {
+        setDisciplines(response.data);
+      } else {
+        toast.error("获取护理学科失败: " + (response.error || "未知错误"));
+      }
+    } catch (error) {
+      console.error("获取护理学科出错:", error);
+      toast.error("获取护理学科失败");
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
+  };
+
+  // 组件挂载时加载数据
+  useEffect(() => {
+    loadDisciplines();
   }, []);
+
+  // 删除护理学科
+  const handleDelete = async (id: number) => {
+    if (!confirm("确定要删除此护理学科吗？此操作不可恢复，且会删除与其关联的所有章节和知识点。")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await deleteNursingDiscipline(id);
+      if (response.success) {
+        toast.success("护理学科删除成功");
+        // 重新加载数据
+        loadDisciplines();
+      } else {
+        toast.error("删除护理学科失败: " + (response.error || "未知错误"));
+      }
+    } catch (error) {
+      console.error("删除护理学科出错:", error);
+      toast.error("删除护理学科失败");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -140,12 +141,13 @@ export default function NursingDisciplinesPage() {
                         编辑
                       </Link>
                       <span className="text-gray-300">|</span>
-                      <Link
-                        href={`/admin/nursing-disciplines/${discipline.id}/delete`}
-                        className="text-red-600 hover:underline"
+                      <button
+                        onClick={() => handleDelete(discipline.id)}
+                        disabled={isDeleting}
+                        className="text-red-600 hover:underline disabled:opacity-50"
                       >
                         删除
-                      </Link>
+                      </button>
                     </div>
                   </td>
                 </tr>

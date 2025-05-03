@@ -7,51 +7,60 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-
-interface ExamSubject {
-  id: number;
-  name: string;
-  description: string;
-  weight: string;
-}
+import { getAllExamSubjects, deleteExamSubject, ExamSubject } from "@/lib/services/exam-subject-service";
+import { toast } from "sonner";
 
 export default function ExamSubjectsPage() {
   const [subjects, setSubjects] = useState<ExamSubject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    // 这里模拟从API获取数据
-    // 实际项目中应该使用fetch调用后端API
-    setTimeout(() => {
-      setSubjects([
-        {
-          id: 1,
-          name: "专业知识",
-          description: "医学基础知识与护理专业理论知识",
-          weight: "45%",
-        },
-        {
-          id: 2,
-          name: "专业实践能力",
-          description: "护理操作技能与实践应用",
-          weight: "35%",
-        },
-        {
-          id: 3,
-          name: "现场论文答辩",
-          description: "专业论文写作与现场答辩",
-          weight: "10%",
-        },
-        {
-          id: 4,
-          name: "外语水平",
-          description: "医学英语阅读与应用能力",
-          weight: "10%",
-        },
-      ]);
+  // 加载考试科目数据
+  const loadSubjects = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getAllExamSubjects();
+      if (response.success && response.data) {
+        setSubjects(response.data);
+      } else {
+        toast.error("获取考试科目失败: " + (response.error || "未知错误"));
+      }
+    } catch (error) {
+      console.error("获取考试科目出错:", error);
+      toast.error("获取考试科目失败");
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
+  };
+
+  // 组件挂载时加载数据
+  useEffect(() => {
+    loadSubjects();
   }, []);
+
+  // 删除考试科目
+  const handleDelete = async (id: number) => {
+    if (!confirm("确定要删除此考试科目吗？此操作不可恢复。")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await deleteExamSubject(id);
+      if (response.success) {
+        toast.success("考试科目删除成功");
+        // 重新加载数据
+        loadSubjects();
+      } else {
+        toast.error("删除考试科目失败: " + (response.error || "未知错误"));
+      }
+    } catch (error) {
+      console.error("删除考试科目出错:", error);
+      toast.error("删除考试科目失败");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -112,12 +121,13 @@ export default function ExamSubjectsPage() {
                         编辑
                       </Link>
                       <span className="text-gray-300">|</span>
-                      <Link
-                        href={`/admin/exam-subjects/${subject.id}/delete`}
-                        className="text-red-600 hover:underline"
+                      <button
+                        onClick={() => handleDelete(subject.id)}
+                        disabled={isDeleting}
+                        className="text-red-600 hover:underline disabled:opacity-50"
                       >
                         删除
-                      </Link>
+                      </button>
                     </div>
                   </td>
                 </tr>

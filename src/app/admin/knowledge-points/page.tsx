@@ -1,7 +1,7 @@
 /**
  * @description 知识点管理页面
  * @author 郝桃桃
- * @date 2024-05-23
+ * @date 2024-05-25
  */
 "use client";
 
@@ -17,159 +17,174 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
-
-interface KnowledgePoint {
-  id: number;
-  title: string;
-  content: string;
-  chapterId: number;
-  chapterName: string;
-  disciplineId: number;
-  disciplineName: string;
-  subjectId: number;
-  subjectName: string;
-  difficulty: number;
-  importance: number;
-}
-
-interface NursingDiscipline {
-  id: number;
-  name: string;
-}
-
-interface Chapter {
-  id: number;
-  name: string;
-  disciplineId: number;
-}
-
-interface ExamSubject {
-  id: number;
-  name: string;
-}
+import { toast } from "sonner";
+import { 
+  getAllKnowledgePoints, 
+  deleteKnowledgePoint, 
+  KnowledgePoint 
+} from "@/lib/services/knowledge-point-service";
+import { 
+  getAllNursingDisciplines, 
+  NursingDiscipline 
+} from "@/lib/services/nursing-discipline-service";
+import { 
+  getAllChapters, 
+  Chapter 
+} from "@/lib/services/chapter-service";
+import { 
+  getAllExamSubjects, 
+  ExamSubject 
+} from "@/lib/services/exam-subject-service";
 
 export default function KnowledgePointsPage() {
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [subjects, setSubjects] = useState<ExamSubject[]>([]);
-  const [selectedDiscipline, setSelectedDiscipline] = useState<string>("");
-  const [selectedChapter, setSelectedChapter] = useState<string>("");
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string>("all");
+  const [selectedChapter, setSelectedChapter] = useState<string>("all");
+  const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 获取所有护理学科和考试科目
   useEffect(() => {
-    // 这里模拟从API获取数据
-    // 实际项目中应该使用fetch调用后端API
-    setTimeout(() => {
-      setDisciplines([
-        { id: 1, name: "内科护理" },
-        { id: 2, name: "外科护理" },
-        { id: 3, name: "妇产科护理" },
-        { id: 4, name: "儿科护理" },
-        { id: 5, name: "急救护理" },
-        { id: 6, name: "社区护理" },
-      ]);
+    async function loadData() {
+      try {
+        // 获取护理学科
+        const disciplinesResponse = await getAllNursingDisciplines();
+        if (disciplinesResponse.success && disciplinesResponse.data) {
+          setDisciplines(disciplinesResponse.data);
+        } else {
+          toast.error("获取护理学科失败: " + (disciplinesResponse.error || "未知错误"));
+        }
 
-      setSubjects([
-        { id: 1, name: "专业知识" },
-        { id: 2, name: "专业实践能力" },
-        { id: 3, name: "现场论文答辩" },
-        { id: 4, name: "外语水平" },
-      ]);
+        // 获取考试科目
+        const subjectsResponse = await getAllExamSubjects();
+        if (subjectsResponse.success && subjectsResponse.data) {
+          setSubjects(subjectsResponse.data);
+        } else {
+          toast.error("获取考试科目失败: " + (subjectsResponse.error || "未知错误"));
+        }
+      } catch (error) {
+        console.error("初始化数据失败:", error);
+        toast.error("加载数据失败");
+      } finally {
+        setIsLoading(false);
+      }
+    }
 
-      setIsLoading(false);
-    }, 300);
+    loadData();
   }, []);
 
   // 基于选择的学科获取章节
   useEffect(() => {
-    if (!selectedDiscipline) {
+    if (selectedDiscipline === "all") {
       setChapters([]);
-      setSelectedChapter("");
+      setSelectedChapter("all");
       return;
     }
 
     setIsLoading(true);
-    // 这里模拟获取章节数据
-    setTimeout(() => {
-      const disciplineId = parseInt(selectedDiscipline);
-      const chapterCount = disciplineId === 1 ? 6 : disciplineId === 2 ? 5 : 4;
-      const chapterData: Chapter[] = [];
-      
-      for (let i = 1; i <= chapterCount; i++) {
-        chapterData.push({
-          id: (disciplineId - 1) * 10 + i,
-          name: `第${i}章 ${getDisciplineName(disciplineId)}的基本概念和理论`,
-          disciplineId,
-        });
+    
+    async function loadChapters() {
+      try {
+        const disciplineId = parseInt(selectedDiscipline);
+        const chaptersResponse = await getAllChapters(disciplineId);
+        
+        if (chaptersResponse.success && chaptersResponse.data) {
+          setChapters(chaptersResponse.data);
+        } else {
+          toast.error("获取章节失败: " + (chaptersResponse.error || "未知错误"));
+        }
+      } catch (error) {
+        console.error("获取章节失败:", error);
+        toast.error("获取章节失败");
+      } finally {
+        setIsLoading(false);
       }
-      
-      setChapters(chapterData);
-      setIsLoading(false);
-    }, 300);
+    }
+
+    loadChapters();
   }, [selectedDiscipline]);
 
-  // 基于选择的学科、章节和科目获取知识点
+  // 基于筛选条件获取知识点
   useEffect(() => {
-    // 如果没有选择值，不加载知识点
-    if (!selectedDiscipline && !selectedChapter && !selectedSubject && !searchTerm) {
+    // 设置查询参数
+    const loadKnowledgePoints = async () => {
+      setIsLoading(true);
+      try {
+        const options: {
+          disciplineId?: number;
+          chapterId?: number;
+          subjectId?: number;
+          search?: string;
+        } = {};
+
+        if (selectedDiscipline !== "all") {
+          options.disciplineId = parseInt(selectedDiscipline);
+        }
+
+        if (selectedChapter !== "all") {
+          options.chapterId = parseInt(selectedChapter);
+        }
+
+        if (selectedSubject !== "all") {
+          options.subjectId = parseInt(selectedSubject);
+        }
+
+        if (searchTerm) {
+          options.search = searchTerm;
+        }
+
+        const response = await getAllKnowledgePoints(options);
+        
+        if (response.success && response.data) {
+          setKnowledgePoints(response.data);
+        } else {
+          toast.error("获取知识点失败: " + (response.error || "未知错误"));
+        }
+      } catch (error) {
+        console.error("获取知识点出错:", error);
+        toast.error("获取知识点失败");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // 只有在选择了学科、章节、科目或搜索词时才加载数据
+    if (selectedDiscipline !== "all" || selectedChapter !== "all" || selectedSubject !== "all" || searchTerm) {
+      loadKnowledgePoints();
+    } else {
       setKnowledgePoints([]);
+    }
+  }, [selectedDiscipline, selectedChapter, selectedSubject, searchTerm]);
+
+  // 处理删除知识点
+  const handleDelete = async (id: number) => {
+    if (!confirm("确定要删除此知识点吗？此操作不可恢复。")) {
       return;
     }
 
-    setIsLoading(true);
-    // 模拟从API获取知识点数据
-    setTimeout(() => {
-      const points: KnowledgePoint[] = [];
-      const limit = 20; // 最多显示20条数据
-      
-      // 生成模拟数据
-      for (let i = 1; i <= limit; i++) {
-        const disciplineId = selectedDiscipline ? parseInt(selectedDiscipline) : Math.floor(Math.random() * 6) + 1;
-        const chapterId = selectedChapter ? parseInt(selectedChapter) : (disciplineId - 1) * 10 + Math.floor(Math.random() * 4) + 1;
-        const subjectId = selectedSubject ? parseInt(selectedSubject) : Math.floor(Math.random() * 4) + 1;
+    setIsDeleting(true);
+    try {
+      const response = await deleteKnowledgePoint(id);
+      if (response.success) {
+        toast.success("知识点删除成功");
         
-        const point: KnowledgePoint = {
-          id: i,
-          title: `知识点${i}: ${getDisciplineName(disciplineId)}中的重要概念`,
-          content: `这是关于${getDisciplineName(disciplineId)}的重要知识点，包含相关理论和实践应用`,
-          chapterId,
-          chapterName: `第${chapterId % 10}章 基础概念`,
-          disciplineId,
-          disciplineName: getDisciplineName(disciplineId),
-          subjectId,
-          subjectName: getSubjectName(subjectId),
-          difficulty: Math.floor(Math.random() * 5) + 1,
-          importance: Math.floor(Math.random() * 5) + 1,
-        };
-        
-        // 如果设置了搜索条件，只添加匹配的知识点
-        if (searchTerm && !point.title.includes(searchTerm) && !point.content.includes(searchTerm)) {
-          continue;
-        }
-        
-        points.push(point);
+        // 更新知识点列表，移除已删除的知识点
+        setKnowledgePoints(prevPoints => prevPoints.filter(point => point.id !== id));
+      } else {
+        toast.error("删除知识点失败: " + (response.error || "未知错误"));
       }
-      
-      setKnowledgePoints(points);
-      setIsLoading(false);
-    }, 500);
-  }, [selectedDiscipline, selectedChapter, selectedSubject, searchTerm]);
-
-  // 获取学科名称
-  function getDisciplineName(id: number): string {
-    const discipline = disciplines.find(d => d.id === id);
-    return discipline ? discipline.name : "";
-  }
-
-  // 获取科目名称
-  function getSubjectName(id: number): string {
-    const subject = subjects.find(s => s.id === id);
-    return subject ? subject.name : "";
-  }
+    } catch (error) {
+      console.error("删除知识点出错:", error);
+      toast.error("删除知识点失败");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // 处理搜索
   function handleSearch() {
@@ -178,9 +193,9 @@ export default function KnowledgePointsPage() {
 
   // 重置所有筛选条件
   function resetFilters() {
-    setSelectedDiscipline("");
-    setSelectedChapter("");
-    setSelectedSubject("");
+    setSelectedDiscipline("all");
+    setSelectedChapter("all");
+    setSelectedSubject("all");
     setSearchTerm("");
   }
 
@@ -218,7 +233,7 @@ export default function KnowledgePointsPage() {
               <SelectValue placeholder="选择学科" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">全部学科</SelectItem>
+              <SelectItem value="all">全部学科</SelectItem>
               {disciplines.map((discipline) => (
                 <SelectItem 
                   key={discipline.id} 
@@ -236,13 +251,13 @@ export default function KnowledgePointsPage() {
           <Select 
             value={selectedChapter} 
             onValueChange={setSelectedChapter}
-            disabled={isLoading || !selectedDiscipline || chapters.length === 0}
+            disabled={isLoading || selectedDiscipline === "all" || chapters.length === 0}
           >
             <SelectTrigger>
               <SelectValue placeholder="选择章节" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">全部章节</SelectItem>
+              <SelectItem value="all">全部章节</SelectItem>
               {chapters.map((chapter) => (
                 <SelectItem 
                   key={chapter.id} 
@@ -266,7 +281,7 @@ export default function KnowledgePointsPage() {
               <SelectValue placeholder="选择科目" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">全部科目</SelectItem>
+              <SelectItem value="all">全部科目</SelectItem>
               {subjects.map((subject) => (
                 <SelectItem 
                   key={subject.id} 
@@ -332,7 +347,7 @@ export default function KnowledgePointsPage() {
             ) : knowledgePoints.length === 0 ? (
               <tr>
                 <td className="px-4 py-3 text-sm" colSpan={6}>
-                  {selectedDiscipline || selectedChapter || selectedSubject || searchTerm
+                  {selectedDiscipline !== "all" || selectedChapter !== "all" || selectedSubject !== "all" || searchTerm
                     ? "没有找到匹配的知识点"
                     : "请选择筛选条件或添加知识点"}
                 </td>
@@ -364,12 +379,13 @@ export default function KnowledgePointsPage() {
                         编辑
                       </Link>
                       <span className="text-gray-300">|</span>
-                      <Link
-                        href={`/admin/knowledge-points/${point.id}/delete`}
-                        className="text-red-600 hover:underline"
+                      <button
+                        onClick={() => handleDelete(point.id)}
+                        disabled={isDeleting}
+                        className="text-red-600 hover:underline disabled:opacity-50"
                       >
                         删除
-                      </Link>
+                      </button>
                     </div>
                   </td>
                 </tr>

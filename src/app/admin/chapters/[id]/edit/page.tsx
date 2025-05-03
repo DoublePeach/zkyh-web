@@ -1,7 +1,7 @@
 /**
- * @description 添加章节页面
+ * @description 编辑章节页面
  * @author 郝桃桃
- * @date 2024-05-23
+ * @date 2024-05-24
  */
 "use client";
 
@@ -37,7 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { createChapter, ChapterRequest } from "@/lib/services/chapter-service";
+import { getChapter, updateChapter, ChapterRequest } from "@/lib/services/chapter-service";
 import { getAllNursingDisciplines, NursingDiscipline } from "@/lib/services/nursing-discipline-service";
 
 // 表单验证Schema
@@ -50,32 +50,11 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function NewChapterPage() {
+export default function EditChapterPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // 获取所有护理学科
-  useEffect(() => {
-    async function loadDisciplines() {
-      try {
-        const response = await getAllNursingDisciplines();
-        if (response.success && response.data) {
-          setDisciplines(response.data);
-        } else {
-          toast.error("获取护理学科失败: " + (response.error || "未知错误"));
-        }
-      } catch (error) {
-        console.error("获取护理学科出错:", error);
-        toast.error("获取护理学科列表失败");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadDisciplines();
-  }, []);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -87,9 +66,62 @@ export default function NewChapterPage() {
     },
   });
 
+  // 获取所有护理学科和章节数据
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // 加载护理学科
+        const disciplinesResponse = await getAllNursingDisciplines();
+        if (!disciplinesResponse.success || !disciplinesResponse.data) {
+          toast.error("获取护理学科失败: " + (disciplinesResponse.error || "未知错误"));
+          router.push("/admin/chapters");
+          return;
+        }
+        setDisciplines(disciplinesResponse.data);
+        
+        // 加载章节详情
+        const id = parseInt(params.id);
+        if (isNaN(id)) {
+          toast.error("无效的章节ID");
+          router.push("/admin/chapters");
+          return;
+        }
+
+        const chapterResponse = await getChapter(id);
+        if (!chapterResponse.success || !chapterResponse.data) {
+          toast.error("获取章节详情失败: " + (chapterResponse.error || "未知错误"));
+          router.push("/admin/chapters");
+          return;
+        }
+
+        const chapter = chapterResponse.data;
+        form.reset({
+          disciplineId: chapter.disciplineId.toString(),
+          name: chapter.name,
+          description: chapter.description,
+          orderIndex: chapter.orderIndex,
+        });
+      } catch (error) {
+        console.error("加载数据失败:", error);
+        toast.error("加载数据失败");
+        router.push("/admin/chapters");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadData();
+  }, [params.id, router, form]);
+
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
+      const id = parseInt(params.id);
+      if (isNaN(id)) {
+        toast.error("无效的章节ID");
+        return;
+      }
+
       // 创建章节请求对象
       const chapterData: ChapterRequest = {
         disciplineId: parseInt(data.disciplineId),
@@ -98,17 +130,17 @@ export default function NewChapterPage() {
         orderIndex: data.orderIndex
       };
       
-      const response = await createChapter(chapterData);
+      const response = await updateChapter(id, chapterData);
       
       if (response.success) {
-        toast.success("章节添加成功");
+        toast.success("章节更新成功");
         router.push("/admin/chapters");
       } else {
-        toast.error("添加失败: " + (response.error || response.message || "未知错误"));
+        toast.error("更新失败: " + (response.error || response.message || "未知错误"));
       }
     } catch (error) {
       console.error("提交失败:", error);
-      toast.error("添加失败，请重试");
+      toast.error("更新失败，请重试");
     } finally {
       setIsSubmitting(false);
     }
@@ -120,23 +152,18 @@ export default function NewChapterPage() {
     return discipline ? discipline.name : "";
   }
 
-  // 根据选择的学科生成章节名称建议
-  useEffect(() => {
-    const disciplineId = form.watch("disciplineId");
-    const orderIndex = form.watch("orderIndex");
-    
-    if (disciplineId && orderIndex) {
-      const disciplineName = getDisciplineName(disciplineId);
-      if (disciplineName && !form.getValues("name")) {
-        form.setValue("name", `第${orderIndex}章 ${disciplineName}基本概念和理论`);
-      }
-    }
-  }, [form.watch("disciplineId"), form.watch("orderIndex")]);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-6">
+        <p className="text-muted-foreground">正在加载章节信息...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">添加章节</h1>
+        <h1 className="text-2xl font-bold tracking-tight">编辑章节</h1>
         <Link
           href="/admin/chapters"
           className="text-sm text-muted-foreground hover:text-foreground"
@@ -149,7 +176,7 @@ export default function NewChapterPage() {
         <CardHeader>
           <CardTitle>章节信息</CardTitle>
           <CardDescription>
-            添加新的护理学科章节
+            编辑护理学科章节
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -162,7 +189,6 @@ export default function NewChapterPage() {
                   <FormItem>
                     <FormLabel>所属护理学科</FormLabel>
                     <Select
-                      disabled={isLoading}
                       onValueChange={field.onChange}
                       value={field.value}
                     >
@@ -251,9 +277,9 @@ export default function NewChapterPage() {
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={isSubmitting || isLoading}
+                  disabled={isSubmitting}
                 >
-                  {isSubmitting ? "保存中..." : "保存章节"}
+                  {isSubmitting ? "保存中..." : "保存更改"}
                 </Button>
               </div>
             </form>

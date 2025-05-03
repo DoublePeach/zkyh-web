@@ -1,5 +1,5 @@
 /**
- * @description 添加知识点页面
+ * @description 编辑知识点页面
  * @author 郝桃桃
  * @date 2024-05-25
  */
@@ -45,7 +45,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { createKnowledgePoint, KnowledgePointRequest } from "@/lib/services/knowledge-point-service";
+import { 
+  getKnowledgePoint, 
+  updateKnowledgePoint, 
+  KnowledgePointRequest 
+} from "@/lib/services/knowledge-point-service";
 import { getAllNursingDisciplines, NursingDiscipline } from "@/lib/services/nursing-discipline-service";
 import { getAllChapters, Chapter } from "@/lib/services/chapter-service";
 import { getAllExamSubjects, ExamSubject } from "@/lib/services/exam-subject-service";
@@ -65,12 +69,12 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function NewKnowledgePointPage() {
+export default function EditKnowledgePointPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [subjects, setSubjects] = useState<ExamSubject[]>([]);
-  const [isLoadingDisciplines, setIsLoadingDisciplines] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
@@ -90,44 +94,85 @@ export default function NewKnowledgePointPage() {
     },
   });
 
-  // 获取所有护理学科和考试科目
+  // 加载知识点详情和主数据
   useEffect(() => {
     async function loadData() {
-      setIsLoadingDisciplines(true);
+      setIsLoading(true);
       try {
+        const id = parseInt(params.id);
+        if (isNaN(id)) {
+          toast.error("无效的知识点ID");
+          router.push("/admin/knowledge-points");
+          return;
+        }
+
         // 获取护理学科
         const disciplinesResponse = await getAllNursingDisciplines();
-        if (disciplinesResponse.success && disciplinesResponse.data) {
-          setDisciplines(disciplinesResponse.data);
-        } else {
+        if (!disciplinesResponse.success || !disciplinesResponse.data) {
           toast.error("获取护理学科失败: " + (disciplinesResponse.error || "未知错误"));
+          router.push("/admin/knowledge-points");
+          return;
         }
+        setDisciplines(disciplinesResponse.data);
         
         // 获取考试科目
         const subjectsResponse = await getAllExamSubjects();
-        if (subjectsResponse.success && subjectsResponse.data) {
-          setSubjects(subjectsResponse.data);
-        } else {
+        if (!subjectsResponse.success || !subjectsResponse.data) {
           toast.error("获取考试科目失败: " + (subjectsResponse.error || "未知错误"));
+          router.push("/admin/knowledge-points");
+          return;
         }
+        setSubjects(subjectsResponse.data);
+
+        // 获取知识点详情
+        const response = await getKnowledgePoint(id);
+        if (!response.success || !response.data) {
+          toast.error("获取知识点详情失败: " + (response.error || "未知错误"));
+          router.push("/admin/knowledge-points");
+          return;
+        }
+
+        const knowledgePoint = response.data;
+
+        // 加载知识点所属章节
+        const chaptersResponse = await getAllChapters(knowledgePoint.disciplineId);
+        if (chaptersResponse.success && chaptersResponse.data) {
+          setChapters(chaptersResponse.data);
+        }
+
+        // 格式化关键词和标签
+        const keywordsString = knowledgePoint.keywords ? knowledgePoint.keywords.join(',') : '';
+        const tagsString = knowledgePoint.tags ? formatTags(knowledgePoint.tags) : '';
+
+        // 设置表单默认值
+        form.reset({
+          title: knowledgePoint.title,
+          content: knowledgePoint.content,
+          disciplineId: knowledgePoint.disciplineId?.toString() || "",
+          chapterId: knowledgePoint.chapterId.toString(),
+          subjectId: knowledgePoint.subjectId.toString(),
+          difficulty: knowledgePoint.difficulty,
+          importance: knowledgePoint.importance,
+          keywords: keywordsString,
+          tags: tagsString,
+        });
       } catch (error) {
-        console.error("初始化数据失败:", error);
+        console.error("加载数据失败:", error);
         toast.error("加载数据失败");
+        router.push("/admin/knowledge-points");
       } finally {
-        setIsLoadingDisciplines(false);
+        setIsLoading(false);
       }
     }
 
     loadData();
-  }, []);
+  }, [params.id, router, form]);
 
   // 基于选择的学科获取章节
   useEffect(() => {
     const disciplineId = form.watch("disciplineId");
     
-    if (!disciplineId) {
-      setChapters([]);
-      form.setValue("chapterId", "");
+    if (!disciplineId || isLoading) {
       return;
     }
 
@@ -140,6 +185,17 @@ export default function NewKnowledgePointPage() {
         
         if (chaptersResponse.success && chaptersResponse.data) {
           setChapters(chaptersResponse.data);
+          
+          // 如果当前选择的章节不属于新选择的学科，清空章节选择
+          const currentChapterId = form.watch("chapterId");
+          if (currentChapterId) {
+            const chapterExists = chaptersResponse.data.some(
+              chapter => chapter.id.toString() === currentChapterId
+            );
+            if (!chapterExists) {
+              form.setValue("chapterId", "");
+            }
+          }
         } else {
           toast.error("获取章节失败: " + (chaptersResponse.error || "未知错误"));
         }
@@ -152,11 +208,26 @@ export default function NewKnowledgePointPage() {
     }
 
     loadChapters();
-  }, [form.watch("disciplineId"), form]);
+  }, [form.watch("disciplineId"), form, isLoading]);
+
+  // 将JSON对象格式化为字符串
+  function formatTags(tags: Record<string, any>): string {
+    if (!tags || Object.keys(tags).length === 0) return '';
+    
+    return Object.entries(tags)
+      .map(([key, value]) => `"${key}": ${typeof value === 'string' ? `"${value}"` : value}`)
+      .join(', ');
+  }
 
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
+      const id = parseInt(params.id);
+      if (isNaN(id)) {
+        toast.error("无效的知识点ID");
+        return;
+      }
+
       // 格式化数据，转换关键词为数组，标签为JSON对象
       const formattedData: KnowledgePointRequest = {
         chapterId: parseInt(data.chapterId),
@@ -169,27 +240,35 @@ export default function NewKnowledgePointPage() {
         tags: data.tags ? JSON.parse(`{${data.tags}}`) : undefined,
       };
       
-      // 调用API保存数据
-      const response = await createKnowledgePoint(formattedData);
+      // 调用API更新数据
+      const response = await updateKnowledgePoint(id, formattedData);
       
       if (response.success) {
-        toast.success("知识点添加成功");
+        toast.success("知识点更新成功");
         router.push("/admin/knowledge-points");
       } else {
-        toast.error("添加失败: " + (response.error || response.message || "未知错误"));
+        toast.error("更新失败: " + (response.error || response.message || "未知错误"));
       }
     } catch (error) {
       console.error("提交失败:", error);
-      toast.error("添加失败，请重试");
+      toast.error("更新失败，请重试");
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-6">
+        <p className="text-muted-foreground">正在加载知识点信息...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">添加知识点</h1>
+        <h1 className="text-2xl font-bold tracking-tight">编辑知识点</h1>
         <Link
           href="/admin/knowledge-points"
           className="text-sm text-muted-foreground hover:text-foreground"
@@ -202,7 +281,7 @@ export default function NewKnowledgePointPage() {
         <CardHeader>
           <CardTitle>知识点信息</CardTitle>
           <CardDescription>
-            添加新的护理学科知识点
+            编辑护理学科知识点
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -225,7 +304,6 @@ export default function NewKnowledgePointPage() {
                         <FormItem>
                           <FormLabel>所属护理学科</FormLabel>
                           <Select
-                            disabled={isLoadingDisciplines}
                             onValueChange={field.onChange}
                             value={field.value}
                           >
@@ -290,7 +368,6 @@ export default function NewKnowledgePointPage() {
                       <FormItem>
                         <FormLabel>所属考试科目</FormLabel>
                         <Select
-                          disabled={isLoadingDisciplines}
                           onValueChange={field.onChange}
                           value={field.value}
                         >
@@ -500,7 +577,7 @@ export default function NewKnowledgePointPage() {
                         type="submit"
                         disabled={isSubmitting}
                       >
-                        {isSubmitting ? "保存中..." : "保存知识点"}
+                        {isSubmitting ? "保存中..." : "保存更改"}
                       </Button>
                     </div>
                   </div>

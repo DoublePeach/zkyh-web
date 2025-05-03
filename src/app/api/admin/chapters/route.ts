@@ -46,46 +46,50 @@ export async function GET(req: NextRequest) {
         );
       }
       
-      // 按学科过滤章节
-      chaptersData = await db.query.chapters.findMany({
-        where: eq(chapters.disciplineId, discId),
-        orderBy: (chapters, { asc }) => [
-          asc(chapters.orderIndex),
-          asc(chapters.id)
-        ],
-        with: {
-          discipline: true,
-        },
-      });
+      // 按学科过滤章节 - 修复关联查询
+      const results = await db.select({
+        id: chapters.id,
+        disciplineId: chapters.disciplineId,
+        name: chapters.name,
+        description: chapters.description,
+        orderIndex: chapters.orderIndex,
+        createdAt: chapters.createdAt,
+        updatedAt: chapters.updatedAt,
+        disciplineName: nursingDisciplines.name
+      })
+      .from(chapters)
+      .leftJoin(nursingDisciplines, eq(chapters.disciplineId, nursingDisciplines.id))
+      .where(eq(chapters.disciplineId, discId))
+      .orderBy(chapters.orderIndex, chapters.id);
+      
+      chaptersData = results;
     } else {
-      // 获取所有章节
-      chaptersData = await db.query.chapters.findMany({
-        orderBy: (chapters, { asc }) => [
-          asc(chapters.disciplineId),
-          asc(chapters.orderIndex),
-          asc(chapters.id)
-        ],
-        with: {
-          discipline: true,
-        },
-      });
+      // 获取所有章节 - 修复关联查询
+      const results = await db.select({
+        id: chapters.id,
+        disciplineId: chapters.disciplineId,
+        name: chapters.name,
+        description: chapters.description,
+        orderIndex: chapters.orderIndex,
+        createdAt: chapters.createdAt,
+        updatedAt: chapters.updatedAt,
+        disciplineName: nursingDisciplines.name
+      })
+      .from(chapters)
+      .leftJoin(nursingDisciplines, eq(chapters.disciplineId, nursingDisciplines.id))
+      .orderBy(chapters.disciplineId, chapters.orderIndex, chapters.id);
+      
+      chaptersData = results;
     }
-    
-    // 处理返回数据，添加学科名称
-    const formattedChapters = chaptersData.map(chapter => ({
-      ...chapter,
-      disciplineName: chapter.discipline.name,
-      discipline: undefined // 不需要返回完整的学科信息
-    }));
 
     return NextResponse.json({
       success: true,
-      data: formattedChapters,
+      data: chaptersData,
     });
   } catch (error) {
     console.error("获取章节失败:", error);
     return NextResponse.json(
-      { success: false, message: "获取章节失败" },
+      { success: false, message: "获取章节失败", error: String(error) },
       { status: 500 }
     );
   }

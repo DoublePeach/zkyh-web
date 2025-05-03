@@ -1,11 +1,11 @@
 /**
- * @description 添加护理学科页面
+ * @description 编辑护理学科页面
  * @author 郝桃桃
- * @date 2024-05-23
+ * @date 2024-05-24
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod";
@@ -30,7 +30,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { createNursingDiscipline, NursingDisciplineRequest } from "@/lib/services/nursing-discipline-service";
+import { 
+  getNursingDiscipline, 
+  updateNursingDiscipline, 
+  NursingDisciplineRequest 
+} from "@/lib/services/nursing-discipline-service";
 
 // 表单验证Schema
 const formSchema = z.object({
@@ -41,8 +45,9 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function NewNursingDisciplinePage() {
+export default function EditNursingDisciplinePage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<FormData>({
@@ -54,29 +59,79 @@ export default function NewNursingDisciplinePage() {
     },
   });
 
+  // 加载学科数据
+  useEffect(() => {
+    async function loadNursingDiscipline() {
+      try {
+        const id = parseInt(params.id);
+        if (isNaN(id)) {
+          toast.error("无效的学科ID");
+          router.push("/admin/nursing-disciplines");
+          return;
+        }
+
+        const response = await getNursingDiscipline(id);
+        
+        if (response.success && response.data) {
+          const discipline = response.data;
+          form.reset({
+            name: discipline.name,
+            description: discipline.description,
+            imageUrl: discipline.imageUrl || "",
+          });
+        } else {
+          toast.error("获取学科详情失败: " + (response.error || "未知错误"));
+          router.push("/admin/nursing-disciplines");
+        }
+      } catch (error) {
+        console.error("获取学科详情失败:", error);
+        toast.error("获取学科详情失败");
+        router.push("/admin/nursing-disciplines");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadNursingDiscipline();
+  }, [params.id, router, form]);
+
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      const response = await createNursingDiscipline(data as NursingDisciplineRequest);
+      const id = parseInt(params.id);
+      if (isNaN(id)) {
+        toast.error("无效的学科ID");
+        return;
+      }
+
+      const response = await updateNursingDiscipline(id, data as NursingDisciplineRequest);
       
       if (response.success) {
-        toast.success("学科添加成功");
+        toast.success("学科更新成功");
         router.push("/admin/nursing-disciplines");
       } else {
-        toast.error("添加失败: " + (response.error || response.message || "未知错误"));
+        toast.error("更新失败: " + (response.error || response.message || "未知错误"));
       }
     } catch (error) {
       console.error("提交失败:", error);
-      toast.error("添加失败，请重试");
+      toast.error("更新失败，请重试");
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-6">
+        <p className="text-muted-foreground">正在加载学科信息...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">添加护理学科</h1>
+        <h1 className="text-2xl font-bold tracking-tight">编辑护理学科</h1>
         <Link
           href="/admin/nursing-disciplines"
           className="text-sm text-muted-foreground hover:text-foreground"
@@ -89,7 +144,7 @@ export default function NewNursingDisciplinePage() {
         <CardHeader>
           <CardTitle>学科信息</CardTitle>
           <CardDescription>
-            添加新的护理学科及其描述
+            编辑护理学科及其描述
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -157,7 +212,7 @@ export default function NewNursingDisciplinePage() {
                   取消
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "保存中..." : "保存学科"}
+                  {isSubmitting ? "保存中..." : "保存更改"}
                 </Button>
               </div>
             </form>

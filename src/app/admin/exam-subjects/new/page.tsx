@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { createExamSubject, ExamSubjectRequest } from "@/lib/services/exam-subject-service";
 
 // 表单验证Schema
 const formSchema = z.object({
@@ -57,15 +58,14 @@ export default function NewExamSubjectPage() {
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      // 这里应该调用API将数据保存到数据库
-      // 实际项目中应使用fetch发送POST请求
-      console.log("提交数据:", data);
+      const response = await createExamSubject(data as ExamSubjectRequest);
       
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      toast.success("科目添加成功");
-      router.push("/admin/exam-subjects");
+      if (response.success) {
+        toast.success("科目添加成功");
+        router.push("/admin/exam-subjects");
+      } else {
+        toast.error("添加失败: " + (response.error || response.message || "未知错误"));
+      }
     } catch (error) {
       console.error("提交失败:", error);
       toast.error("添加失败，请重试");

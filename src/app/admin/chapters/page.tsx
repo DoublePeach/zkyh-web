@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -14,78 +15,88 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface Chapter {
-  id: number;
-  name: string;
-  description: string;
-  disciplineId: number;
-  orderIndex: number;
-}
-
-interface NursingDiscipline {
-  id: number;
-  name: string;
-}
+import { getAllChapters, deleteChapter, Chapter } from "@/lib/services/chapter-service";
+import { getAllNursingDisciplines, NursingDiscipline } from "@/lib/services/nursing-discipline-service";
 
 export default function ChaptersPage() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
-  const [selectedDiscipline, setSelectedDiscipline] = useState<string>("");
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [isDisciplinesLoading, setIsDisciplinesLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // 获取所有护理学科
+  // 加载所有护理学科
   useEffect(() => {
-    // 这里模拟从API获取学科数据
-    // 实际项目中应该使用fetch调用后端API
-    setTimeout(() => {
-      setDisciplines([
-        { id: 1, name: "内科护理" },
-        { id: 2, name: "外科护理" },
-        { id: 3, name: "妇产科护理" },
-        { id: 4, name: "儿科护理" },
-        { id: 5, name: "急救护理" },
-        { id: 6, name: "社区护理" },
-      ]);
-      setIsLoading(false);
-    }, 300);
+    async function loadDisciplines() {
+      try {
+        const response = await getAllNursingDisciplines();
+        if (response.success && response.data) {
+          setDisciplines(response.data);
+        } else {
+          toast.error("获取护理学科失败: " + (response.error || "未知错误"));
+        }
+      } catch (error) {
+        console.error("获取护理学科出错:", error);
+        toast.error("获取护理学科列表失败");
+      } finally {
+        setIsDisciplinesLoading(false);
+      }
+    }
+
+    loadDisciplines();
   }, []);
 
-  // 基于选择的学科获取章节数据
-  useEffect(() => {
-    if (!selectedDiscipline) return;
-
+  // 加载章节数据
+  const loadChapters = async () => {
     setIsLoading(true);
-    // 这里模拟从API获取章节数据
-    // 实际项目中应该使用fetch调用后端API
-    setTimeout(() => {
-      // 根据选择的学科生成模拟数据
-      const disciplineId = parseInt(selectedDiscipline);
-      const chapterData: Chapter[] = [];
+    try {
+      // 如果选择了特定的学科，则按学科ID筛选
+      const disciplineId = selectedDiscipline !== "all" ? parseInt(selectedDiscipline) : undefined;
+      const response = await getAllChapters(disciplineId);
       
-      // 为每个学科生成4-6个章节
-      const chapterCount = disciplineId === 1 ? 6 : disciplineId === 2 ? 5 : 4;
-      
-      for (let i = 1; i <= chapterCount; i++) {
-        chapterData.push({
-          id: (disciplineId - 1) * 10 + i,
-          name: `第${i}章 ${getDisciplineName(disciplineId)}的基本概念和理论`,
-          description: `${getDisciplineName(disciplineId)}的第${i}章内容，包括基础知识和相关理论`,
-          disciplineId,
-          orderIndex: i,
-        });
+      if (response.success && response.data) {
+        setChapters(response.data);
+      } else {
+        toast.error("获取章节数据失败: " + (response.error || "未知错误"));
       }
-      
-      setChapters(chapterData);
+    } catch (error) {
+      console.error("获取章节数据出错:", error);
+      toast.error("获取章节数据失败");
+    } finally {
       setIsLoading(false);
-    }, 500);
-  }, [selectedDiscipline]);
+    }
+  };
 
-  // 获取学科名称
-  function getDisciplineName(id: number): string {
-    const discipline = disciplines.find(d => d.id === id);
-    return discipline ? discipline.name : "";
-  }
+  // 当选择的学科变化时，重新加载章节数据
+  useEffect(() => {
+    if (!isDisciplinesLoading) {
+      loadChapters();
+    }
+  }, [selectedDiscipline, isDisciplinesLoading]);
+
+  // 删除章节
+  const handleDelete = async (id: number) => {
+    if (!confirm("确定要删除此章节吗？此操作不可恢复，且会删除与此章节关联的所有知识点。")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await deleteChapter(id);
+      if (response.success) {
+        toast.success("章节删除成功");
+        loadChapters();
+      } else {
+        toast.error("删除章节失败: " + (response.error || "未知错误"));
+      }
+    } catch (error) {
+      console.error("删除章节出错:", error);
+      toast.error("删除章节失败");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -114,12 +125,13 @@ export default function ChaptersPage() {
         <Select 
           value={selectedDiscipline} 
           onValueChange={setSelectedDiscipline}
-          disabled={isLoading || disciplines.length === 0}
+          disabled={isLoading || isDisciplinesLoading}
         >
           <SelectTrigger id="discipline-select" className="w-[300px]">
             <SelectValue placeholder="请选择护理学科" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">所有学科</SelectItem>
             {disciplines.map((discipline) => (
               <SelectItem 
                 key={discipline.id} 
@@ -139,27 +151,22 @@ export default function ChaptersPage() {
               <th className="px-4 py-3 text-left text-sm font-medium">ID</th>
               <th className="px-4 py-3 text-left text-sm font-medium">章节名称</th>
               <th className="px-4 py-3 text-left text-sm font-medium">描述</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">所属学科</th>
               <th className="px-4 py-3 text-left text-sm font-medium">顺序</th>
               <th className="px-4 py-3 text-left text-sm font-medium">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {isLoading ? (
+            {isLoading || isDisciplinesLoading ? (
               <tr>
-                <td className="px-4 py-3 text-sm" colSpan={5}>
+                <td className="px-4 py-3 text-sm" colSpan={6}>
                   加载中...
-                </td>
-              </tr>
-            ) : !selectedDiscipline ? (
-              <tr>
-                <td className="px-4 py-3 text-sm" colSpan={5}>
-                  请先选择护理学科
                 </td>
               </tr>
             ) : chapters.length === 0 ? (
               <tr>
-                <td className="px-4 py-3 text-sm" colSpan={5}>
-                  暂无章节数据，请添加
+                <td className="px-4 py-3 text-sm" colSpan={6}>
+                  {selectedDiscipline !== "all" ? "该学科下暂无章节数据，请添加" : "暂无章节数据，请选择学科并添加"}
                 </td>
               </tr>
             ) : (
@@ -170,6 +177,7 @@ export default function ChaptersPage() {
                     {chapter.name}
                   </td>
                   <td className="px-4 py-3 text-sm">{chapter.description}</td>
+                  <td className="px-4 py-3 text-sm">{chapter.disciplineName}</td>
                   <td className="px-4 py-3 text-sm">{chapter.orderIndex}</td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex items-center gap-2">
@@ -187,12 +195,13 @@ export default function ChaptersPage() {
                         知识点
                       </Link>
                       <span className="text-gray-300">|</span>
-                      <Link
-                        href={`/admin/chapters/${chapter.id}/delete`}
-                        className="text-red-600 hover:underline"
+                      <button
+                        onClick={() => handleDelete(chapter.id)}
+                        disabled={isDeleting}
+                        className="text-red-600 hover:underline disabled:opacity-50"
                       >
                         删除
-                      </Link>
+                      </button>
                     </div>
                   </td>
                 </tr>

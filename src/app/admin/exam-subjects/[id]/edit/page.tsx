@@ -1,11 +1,11 @@
 /**
- * @description 添加护理学科页面
+ * @description 编辑考试科目页面
  * @author 郝桃桃
- * @date 2024-05-23
+ * @date 2024-05-24
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod";
@@ -30,19 +30,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { createNursingDiscipline, NursingDisciplineRequest } from "@/lib/services/nursing-discipline-service";
+import { getExamSubject, updateExamSubject, ExamSubjectRequest } from "@/lib/services/exam-subject-service";
 
 // 表单验证Schema
 const formSchema = z.object({
-  name: z.string().min(1, "学科名称不能为空"),
-  description: z.string().min(1, "学科描述不能为空"),
-  imageUrl: z.string().optional(),
+  name: z.string().min(1, "科目名称不能为空"),
+  description: z.string().min(1, "科目描述不能为空"),
+  weight: z.string().min(1, "考试权重不能为空").regex(/^\d+%$/, "权重格式应为数字加百分号，如45%"),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function NewNursingDisciplinePage() {
+export default function EditExamSubjectPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<FormData>({
@@ -50,46 +51,96 @@ export default function NewNursingDisciplinePage() {
     defaultValues: {
       name: "",
       description: "",
-      imageUrl: "",
+      weight: "",
     },
   });
+
+  // 加载科目数据
+  useEffect(() => {
+    async function loadExamSubject() {
+      try {
+        const id = parseInt(params.id);
+        if (isNaN(id)) {
+          toast.error("无效的科目ID");
+          router.push("/admin/exam-subjects");
+          return;
+        }
+
+        const response = await getExamSubject(id);
+        
+        if (response.success && response.data) {
+          const subject = response.data;
+          form.reset({
+            name: subject.name,
+            description: subject.description,
+            weight: subject.weight,
+          });
+        } else {
+          toast.error("获取科目详情失败: " + (response.error || "未知错误"));
+          router.push("/admin/exam-subjects");
+        }
+      } catch (error) {
+        console.error("获取科目详情失败:", error);
+        toast.error("获取科目详情失败");
+        router.push("/admin/exam-subjects");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadExamSubject();
+  }, [params.id, router, form]);
 
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      const response = await createNursingDiscipline(data as NursingDisciplineRequest);
+      const id = parseInt(params.id);
+      if (isNaN(id)) {
+        toast.error("无效的科目ID");
+        return;
+      }
+
+      const response = await updateExamSubject(id, data as ExamSubjectRequest);
       
       if (response.success) {
-        toast.success("学科添加成功");
-        router.push("/admin/nursing-disciplines");
+        toast.success("科目更新成功");
+        router.push("/admin/exam-subjects");
       } else {
-        toast.error("添加失败: " + (response.error || response.message || "未知错误"));
+        toast.error("更新失败: " + (response.error || response.message || "未知错误"));
       }
     } catch (error) {
       console.error("提交失败:", error);
-      toast.error("添加失败，请重试");
+      toast.error("更新失败，请重试");
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-6">
+        <p className="text-muted-foreground">正在加载科目信息...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-3xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">添加护理学科</h1>
+        <h1 className="text-2xl font-bold tracking-tight">编辑考试科目</h1>
         <Link
-          href="/admin/nursing-disciplines"
+          href="/admin/exam-subjects"
           className="text-sm text-muted-foreground hover:text-foreground"
         >
-          返回学科列表
+          返回科目列表
         </Link>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>学科信息</CardTitle>
+          <CardTitle>科目信息</CardTitle>
           <CardDescription>
-            添加新的护理学科及其描述
+            编辑护理职称考试科目及其描述
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -100,10 +151,10 @@ export default function NewNursingDisciplinePage() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>学科名称</FormLabel>
+                    <FormLabel>科目名称</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="如：内科护理、外科护理等" 
+                        placeholder="如：专业知识、专业实践能力等" 
                         {...field} 
                       />
                     </FormControl>
@@ -117,10 +168,10 @@ export default function NewNursingDisciplinePage() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>学科描述</FormLabel>
+                    <FormLabel>科目描述</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="学科的详细描述和内容范围" 
+                        placeholder="科目的详细描述和考试内容" 
                         rows={4}
                         {...field} 
                       />
@@ -132,13 +183,13 @@ export default function NewNursingDisciplinePage() {
 
               <FormField
                 control={form.control}
-                name="imageUrl"
+                name="weight"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>图标URL <span className="text-xs text-muted-foreground">(可选)</span></FormLabel>
+                    <FormLabel>考试权重</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="图标图片的URL地址"
+                        placeholder="如：45%"
                         {...field} 
                       />
                     </FormControl>
@@ -151,13 +202,13 @@ export default function NewNursingDisciplinePage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push("/admin/nursing-disciplines")}
+                  onClick={() => router.push("/admin/exam-subjects")}
                   disabled={isSubmitting}
                 >
                   取消
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "保存中..." : "保存学科"}
+                  {isSubmitting ? "保存中..." : "保存更改"}
                 </Button>
               </div>
             </form>
