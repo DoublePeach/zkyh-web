@@ -109,56 +109,52 @@ export default function KnowledgePointsPage() {
     loadChapters();
   }, [selectedDiscipline]);
 
+  // 加载知识点数据
+  const loadKnowledgePoints = async () => {
+    setIsLoading(true);
+    try {
+      const options: {
+        disciplineId?: number;
+        chapterId?: number;
+        subjectId?: number;
+        search?: string;
+      } = {};
+
+      if (selectedDiscipline !== "all") {
+        options.disciplineId = parseInt(selectedDiscipline);
+      }
+
+      if (selectedChapter !== "all") {
+        options.chapterId = parseInt(selectedChapter);
+      }
+
+      if (selectedSubject !== "all") {
+        options.subjectId = parseInt(selectedSubject);
+      }
+
+      if (searchTerm) {
+        options.search = searchTerm;
+      }
+
+      const response = await getAllKnowledgePoints(options);
+      
+      if (response.success && response.data) {
+        setKnowledgePoints(response.data);
+      } else {
+        toast.error("获取知识点失败: " + (response.error || "未知错误"));
+      }
+    } catch (error) {
+      console.error("获取知识点出错:", error);
+      toast.error("获取知识点失败");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 基于筛选条件获取知识点
   useEffect(() => {
-    // 设置查询参数
-    const loadKnowledgePoints = async () => {
-      setIsLoading(true);
-      try {
-        const options: {
-          disciplineId?: number;
-          chapterId?: number;
-          subjectId?: number;
-          search?: string;
-        } = {};
-
-        if (selectedDiscipline !== "all") {
-          options.disciplineId = parseInt(selectedDiscipline);
-        }
-
-        if (selectedChapter !== "all") {
-          options.chapterId = parseInt(selectedChapter);
-        }
-
-        if (selectedSubject !== "all") {
-          options.subjectId = parseInt(selectedSubject);
-        }
-
-        if (searchTerm) {
-          options.search = searchTerm;
-        }
-
-        const response = await getAllKnowledgePoints(options);
-        
-        if (response.success && response.data) {
-          setKnowledgePoints(response.data);
-        } else {
-          toast.error("获取知识点失败: " + (response.error || "未知错误"));
-        }
-      } catch (error) {
-        console.error("获取知识点出错:", error);
-        toast.error("获取知识点失败");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    // 只有在选择了学科、章节、科目或搜索词时才加载数据
-    if (selectedDiscipline !== "all" || selectedChapter !== "all" || selectedSubject !== "all" || searchTerm) {
-      loadKnowledgePoints();
-    } else {
-      setKnowledgePoints([]);
-    }
+    // 加载知识点数据
+    loadKnowledgePoints();
   }, [selectedDiscipline, selectedChapter, selectedSubject, searchTerm]);
 
   // 处理删除知识点
@@ -347,9 +343,7 @@ export default function KnowledgePointsPage() {
             ) : knowledgePoints.length === 0 ? (
               <tr>
                 <td className="px-4 py-3 text-sm" colSpan={6}>
-                  {selectedDiscipline !== "all" || selectedChapter !== "all" || selectedSubject !== "all" || searchTerm
-                    ? "没有找到匹配的知识点"
-                    : "请选择筛选条件或添加知识点"}
+                  没有找到匹配的知识点
                 </td>
               </tr>
             ) : (

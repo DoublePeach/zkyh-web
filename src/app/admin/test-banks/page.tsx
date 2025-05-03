@@ -17,17 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, FilterX } from "lucide-react";
-
-interface TestBank {
-  id: number;
-  name: string;
-  description: string;
-  type: string;
-  year: number | null;
-  subjectId: number;
-  subjectName: string;
-  totalQuestions: number;
-}
+import { getAllTestBanks, TestBank, deleteTestBank } from "@/lib/services/test-bank-service";
+import { toast } from "sonner";
 
 interface ExamSubject {
   id: number;
@@ -50,74 +41,72 @@ export default function TestBanksPage() {
 
   // 获取所有考试科目
   useEffect(() => {
-    // 这里模拟从API获取数据
-    // 实际项目中应该使用fetch调用后端API
-    setTimeout(() => {
-      setSubjects([
-        { id: 1, name: "专业知识" },
-        { id: 2, name: "专业实践能力" },
-        { id: 3, name: "现场论文答辩" },
-        { id: 4, name: "外语水平" },
-      ]);
-      setIsLoading(false);
-    }, 300);
+    async function fetchExamSubjects() {
+      try {
+        const response = await fetch('/api/admin/exam-subjects');
+        const result = await response.json();
+        
+        if (result.success) {
+          setSubjects(result.data);
+        } else {
+          toast.error("获取考试科目失败", {
+            description: result.message,
+          });
+        }
+      } catch (error) {
+        console.error("获取考试科目出错:", error);
+        toast.error("出错了", {
+          description: "获取考试科目时发生错误",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchExamSubjects();
   }, []);
 
   // 基于选择的科目和类型获取题库
   useEffect(() => {
-    // 如果没有选择值且第一次加载，不加载题库
-    if ((selectedSubject === "all" && selectedType === "all") && isLoading) {
+    // 如果没有选择值且处于首次加载状态，不加载题库
+    if (isLoading && selectedSubject === "all" && selectedType === "all") {
       return;
     }
 
-    setIsLoading(true);
-    // 模拟从API获取题库数据
-    setTimeout(() => {
-      const banks: TestBank[] = [];
-      
-      // 生成模拟数据 - 每个科目每种类型生成2-3个题库
-      for (let subjectId = 1; subjectId <= 4; subjectId++) {
-        const types = ["模拟题", "历年真题", "练习题"];
+    async function fetchTestBanks() {
+      setIsLoading(true);
+      try {
+        const options: { subjectId?: number; type?: string } = {};
         
-        types.forEach(type => {
-          const count = type === "历年真题" ? 3 : 2;
-          
-          for (let i = 1; i <= count; i++) {
-            const id = (subjectId - 1) * 10 + (type === "模拟题" ? i : type === "历年真题" ? i + 3 : i + 6);
-            const year = type === "历年真题" ? 2024 - i : null;
-            
-            const bank: TestBank = {
-              id,
-              name: type === "历年真题" 
-                ? `${year}年${getSubjectName(subjectId)}真题`
-                : `${getSubjectName(subjectId)}${type} ${i}`,
-              description: `${type === "历年真题" ? `${year}年` : ""}${getSubjectName(subjectId)}${type}，包含各种题型`,
-              type,
-              year,
-              subjectId,
-              subjectName: getSubjectName(subjectId),
-              totalQuestions: Math.floor(Math.random() * 50) + 50, // 50-100题
-            };
-            
-            // 仅添加符合筛选条件的题库
-            if ((selectedSubject === "all" || parseInt(selectedSubject) === subjectId) && 
-                (selectedType === "all" || selectedType === type)) {
-              banks.push(bank);
-            }
-          }
+        if (selectedSubject !== "all") {
+          options.subjectId = parseInt(selectedSubject);
+        }
+        
+        if (selectedType !== "all") {
+          options.type = selectedType;
+        }
+        
+        const result = await getAllTestBanks(options);
+        
+        if (result.success) {
+          setTestBanks(result.data || []);
+        } else {
+          toast.error("获取题库失败", {
+            description: result.message,
+          });
+        }
+      } catch (error) {
+        console.error("获取题库出错:", error);
+        toast.error("出错了", {
+          description: "获取题库时发生错误",
         });
+      } finally {
+        setIsLoading(false);
       }
-      
-      setTestBanks(banks);
-      setIsLoading(false);
-    }, 500);
-  }, [selectedSubject, selectedType]);
+    }
 
-  // 获取科目名称
-  function getSubjectName(id: number): string {
-    const subject = subjects.find(s => s.id === id);
-    return subject ? subject.name : "";
-  }
+    fetchTestBanks();
+  }, [selectedSubject, selectedType]);
 
   // 重置所有筛选条件
   function resetFilters() {
@@ -136,6 +125,44 @@ export default function TestBanksPage() {
         return "bg-green-100 text-green-800 hover:bg-green-200";
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-200";
+    }
+  }
+
+  async function handleDeleteTestBank(bank: TestBank) {
+    if (window.confirm(`确定要删除"${bank.name}"题库吗？`)) {
+      try {
+        const result = await deleteTestBank(bank.id);
+        
+        if (result.success) {
+          toast.success("删除成功", {
+            description: "题库已成功删除",
+          });
+          // 刷新列表
+          const options: { subjectId?: number; type?: string } = {};
+          
+          if (selectedSubject !== "all") {
+            options.subjectId = parseInt(selectedSubject);
+          }
+          
+          if (selectedType !== "all") {
+            options.type = selectedType;
+          }
+          
+          const refreshResult = await getAllTestBanks(options);
+          if (refreshResult.success) {
+            setTestBanks(refreshResult.data || []);
+          }
+        } else {
+          toast.error("删除失败", {
+            description: result.message || "未能删除题库",
+          });
+        }
+      } catch (error) {
+        console.error("删除题库失败:", error);
+        toast.error("删除出错", {
+          description: "删除题库时出现错误，请稍后重试",
+        });
+      }
     }
   }
 
@@ -273,12 +300,12 @@ export default function TestBanksPage() {
                     编辑
                   </Link>
                   <span className="text-gray-300">|</span>
-                  <Link
-                    href={`/admin/test-banks/${bank.id}/delete`}
+                  <button
+                    onClick={() => handleDeleteTestBank(bank)}
                     className="text-red-600 hover:underline"
                   >
                     删除
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>

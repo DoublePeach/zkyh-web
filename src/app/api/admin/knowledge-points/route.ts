@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
         ${subjectId ? ` AND kp.subject_id = ${parseInt(subjectId)}` : ''}
         ${search ? ` AND (kp.title LIKE '%${search}%' OR kp.content LIKE '%${search}%')` : ''}
       ORDER BY 
-        kp.chapter_id, kp.title
+        kp.created_at DESC
     `;
     
     // 执行原始SQL查询
