@@ -3,6 +3,13 @@
  * @author 郝桃桃
  * @date 2024-05-24
  */
+
+// 首先创建一个服务器组件作为入口点
+export default function EditChapterPage({ params }: { params: { id: string } }) {
+  return <EditChapterClient id={params.id} />;
+}
+
+// 然后创建一个客户端组件来处理所有逻辑
 "use client";
 
 import { useState, useEffect } from "react";
@@ -50,7 +57,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function EditChapterPage({ params }: { params: { id: string } }) {
+function EditChapterClient({ id }: { id: string }) {
   const router = useRouter();
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,14 +87,14 @@ export default function EditChapterPage({ params }: { params: { id: string } }) 
         setDisciplines(disciplinesResponse.data);
         
         // 加载章节详情
-        const id = parseInt(params.id);
-        if (isNaN(id)) {
+        const chapterId = parseInt(id);
+        if (isNaN(chapterId)) {
           toast.error("无效的章节ID");
           router.push("/admin/chapters");
           return;
         }
 
-        const chapterResponse = await getChapter(id);
+        const chapterResponse = await getChapter(chapterId);
         if (!chapterResponse.success || !chapterResponse.data) {
           toast.error("获取章节详情失败: " + (chapterResponse.error || "未知错误"));
           router.push("/admin/chapters");
@@ -111,13 +118,13 @@ export default function EditChapterPage({ params }: { params: { id: string } }) 
     }
 
     loadData();
-  }, [params.id, router, form]);
+  }, [id, router, form]);
 
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
+      const chapterId = parseInt(id);
+      if (isNaN(chapterId)) {
         toast.error("无效的章节ID");
         return;
       }
@@ -130,7 +137,7 @@ export default function EditChapterPage({ params }: { params: { id: string } }) 
         orderIndex: data.orderIndex
       };
       
-      const response = await updateChapter(id, chapterData);
+      const response = await updateChapter(chapterId, chapterData);
       
       if (response.success) {
         toast.success("章节更新成功");

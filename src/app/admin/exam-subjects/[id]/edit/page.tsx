@@ -3,6 +3,13 @@
  * @author 郝桃桃
  * @date 2024-05-24
  */
+
+// 首先创建一个服务器组件作为入口点
+export default function EditExamSubjectPage({ params }: { params: { id: string } }) {
+  return <EditExamSubjectClient id={params.id} />;
+}
+
+// 然后创建一个客户端组件来处理所有逻辑
 "use client";
 
 import { useState, useEffect } from "react";
@@ -41,7 +48,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function EditExamSubjectPage({ params }: { params: { id: string } }) {
+function EditExamSubjectClient({ id }: { id: string }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,14 +66,14 @@ export default function EditExamSubjectPage({ params }: { params: { id: string }
   useEffect(() => {
     async function loadExamSubject() {
       try {
-        const id = parseInt(params.id);
-        if (isNaN(id)) {
+        const subjectId = parseInt(id);
+        if (isNaN(subjectId)) {
           toast.error("无效的科目ID");
           router.push("/admin/exam-subjects");
           return;
         }
 
-        const response = await getExamSubject(id);
+        const response = await getExamSubject(subjectId);
         
         if (response.success && response.data) {
           const subject = response.data;
@@ -89,18 +96,18 @@ export default function EditExamSubjectPage({ params }: { params: { id: string }
     }
 
     loadExamSubject();
-  }, [params.id, router, form]);
+  }, [id, router, form]);
 
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
+      const subjectId = parseInt(id);
+      if (isNaN(subjectId)) {
         toast.error("无效的科目ID");
         return;
       }
 
-      const response = await updateExamSubject(id, data as ExamSubjectRequest);
+      const response = await updateExamSubject(subjectId, data as ExamSubjectRequest);
       
       if (response.success) {
         toast.success("科目更新成功");

@@ -67,7 +67,7 @@ export async function POST(req: Request) {
         .where(eq(adminUsers.id, adminUser.id));
       
       // 设置管理员登录会话cookie
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       cookieStore.set("admin_session", String(adminUser.id), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

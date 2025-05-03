@@ -3,6 +3,13 @@
  * @author 郝桃桃
  * @date 2024-05-25
  */
+
+// 首先创建一个服务器组件作为入口点
+export default function EditKnowledgePointPage({ params }: { params: { id: string } }) {
+  return <EditKnowledgePointClient id={params.id} />;
+}
+
+// 然后创建一个客户端组件来处理所有逻辑
 "use client";
 
 import { useState, useEffect } from "react";
@@ -69,7 +76,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function EditKnowledgePointPage({ params }: { params: { id: string } }) {
+function EditKnowledgePointClient({ id }: { id: string }) {
   const router = useRouter();
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -99,8 +106,8 @@ export default function EditKnowledgePointPage({ params }: { params: { id: strin
     async function loadData() {
       setIsLoading(true);
       try {
-        const id = parseInt(params.id);
-        if (isNaN(id)) {
+        const knowledgePointId = parseInt(id);
+        if (isNaN(knowledgePointId)) {
           toast.error("无效的知识点ID");
           router.push("/admin/knowledge-points");
           return;
@@ -125,7 +132,7 @@ export default function EditKnowledgePointPage({ params }: { params: { id: strin
         setSubjects(subjectsResponse.data);
 
         // 获取知识点详情
-        const response = await getKnowledgePoint(id);
+        const response = await getKnowledgePoint(knowledgePointId);
         if (!response.success || !response.data) {
           toast.error("获取知识点详情失败: " + (response.error || "未知错误"));
           router.push("/admin/knowledge-points");
@@ -166,7 +173,7 @@ export default function EditKnowledgePointPage({ params }: { params: { id: strin
     }
 
     loadData();
-  }, [params.id, router, form]);
+  }, [id, router, form]);
 
   // 基于选择的学科获取章节
   useEffect(() => {
@@ -222,8 +229,8 @@ export default function EditKnowledgePointPage({ params }: { params: { id: strin
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
+      const knowledgePointId = parseInt(id);
+      if (isNaN(knowledgePointId)) {
         toast.error("无效的知识点ID");
         return;
       }
@@ -241,7 +248,7 @@ export default function EditKnowledgePointPage({ params }: { params: { id: strin
       };
       
       // 调用API更新数据
-      const response = await updateKnowledgePoint(id, formattedData);
+      const response = await updateKnowledgePoint(knowledgePointId, formattedData);
       
       if (response.success) {
         toast.success("知识点更新成功");

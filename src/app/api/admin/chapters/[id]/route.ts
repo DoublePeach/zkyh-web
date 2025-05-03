@@ -1,30 +1,31 @@
 /**
  * @description 单个章节管理API
  * @author 郝桃桃
- * @date 2024-05-23
+ * @date 2024-05-25
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { chapters, knowledgePoints, nursingDisciplines } from "@/db/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { chapters, nursingDisciplines, knowledgePoints } from "@/db/schema";
+import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
 
 // 请求验证Schema
 const chapterSchema = z.object({
-  disciplineId: z.number().int().positive("护理学科ID必须是正整数"),
   name: z.string().min(1, "章节名称不能为空"),
   description: z.string().min(1, "章节描述不能为空"),
-  orderIndex: z.number().int().positive("章节顺序必须是正整数"),
+  disciplineId: z.number().int().positive("护理学科ID必须是正整数"),
 });
 
 // 获取单个章节
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const chapterId = parseInt(id);
+    
+    if (isNaN(chapterId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -33,7 +34,7 @@ export async function GET(
 
     // 获取章节信息，包含学科信息
     const chapter = await db.query.chapters.findFirst({
-      where: eq(chapters.id, id),
+      where: eq(chapters.id, chapterId),
     });
 
     if (!chapter) {
@@ -50,9 +51,9 @@ export async function GET(
 
     // 获取知识点数量
     const knowledgePointCount = await db
-      .select({ count: knowledgePoints.id })
+      .select({ count: count() })
       .from(knowledgePoints)
-      .where(eq(knowledgePoints.chapterId, id))
+      .where(eq(knowledgePoints.chapterId, chapterId))
       .execute();
 
     return NextResponse.json({
@@ -60,7 +61,7 @@ export async function GET(
       data: {
         ...chapter,
         disciplineName: discipline?.name || "",
-        knowledgePointCount: knowledgePointCount.length || 0,
+        knowledgePointCount: knowledgePointCount[0]?.count || 0,
       },
     });
   } catch (error) {
@@ -75,11 +76,13 @@ export async function GET(
 // 更新章节
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const chapterId = parseInt(id);
+    
+    if (isNaN(chapterId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -91,7 +94,7 @@ export async function PUT(
 
     // 检查章节是否存在
     const existingChapter = await db.query.chapters.findFirst({
-      where: eq(chapters.id, id),
+      where: eq(chapters.id, chapterId),
     });
 
     if (!existingChapter) {
@@ -101,7 +104,7 @@ export async function PUT(
       );
     }
 
-    // 检查学科是否存在
+    // 检查护理学科是否存在
     const discipline = await db.query.nursingDisciplines.findFirst({
       where: eq(nursingDisciplines.id, validatedData.disciplineId),
     });
@@ -122,34 +125,13 @@ export async function PUT(
         where: and(
           eq(chapters.disciplineId, validatedData.disciplineId),
           eq(chapters.name, validatedData.name),
-          ne(chapters.id, id)
+          ne(chapters.id, chapterId)
         ),
       });
 
       if (nameExists) {
         return NextResponse.json(
-          { success: false, message: "该学科下已存在同名章节" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // 如果更改了学科或序号，检查新学科下是否已存在相同序号的章节
-    if (
-      validatedData.disciplineId !== existingChapter.disciplineId ||
-      validatedData.orderIndex !== existingChapter.orderIndex
-    ) {
-      const orderExists = await db.query.chapters.findFirst({
-        where: and(
-          eq(chapters.disciplineId, validatedData.disciplineId),
-          eq(chapters.orderIndex, validatedData.orderIndex),
-          ne(chapters.id, id)
-        ),
-      });
-
-      if (orderExists) {
-        return NextResponse.json(
-          { success: false, message: "该学科下已存在相同序号的章节" },
+          { success: false, message: "该护理学科下已存在同名章节" },
           { status: 400 }
         );
       }
@@ -161,19 +143,30 @@ export async function PUT(
         ...validatedData,
         updatedAt: new Date(),
       })
-      .where(eq(chapters.id, id));
+      .where(eq(chapters.id, chapterId));
 
-    // 获取更新后的章节
+    // 获取更新后的章节信息
     const updatedChapter = await db.query.chapters.findFirst({
-      where: eq(chapters.id, id),
+      where: eq(chapters.id, chapterId),
     });
+
+    // 获取学科名称
+    const disciplineName = discipline.name;
+
+    // 获取知识点数量
+    const knowledgePointCount = await db
+      .select({ count: count() })
+      .from(knowledgePoints)
+      .where(eq(knowledgePoints.chapterId, chapterId))
+      .execute();
 
     return NextResponse.json({
       success: true,
       message: "章节更新成功",
       data: {
         ...updatedChapter,
-        disciplineName: discipline.name,
+        disciplineName,
+        knowledgePointCount: knowledgePointCount[0]?.count || 0,
       },
     });
   } catch (error) {
@@ -194,11 +187,13 @@ export async function PUT(
 // 删除章节
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const chapterId = parseInt(id);
+    
+    if (isNaN(chapterId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -207,7 +202,7 @@ export async function DELETE(
 
     // 检查章节是否存在
     const chapter = await db.query.chapters.findFirst({
-      where: eq(chapters.id, id),
+      where: eq(chapters.id, chapterId),
     });
 
     if (!chapter) {
@@ -217,24 +212,20 @@ export async function DELETE(
       );
     }
 
-    // 检查是否有关联的知识点，如果有则不允许删除
-    const relatedKnowledgePoints = await db.query.knowledgePoints.findMany({
-      where: eq(knowledgePoints.chapterId, id),
-      limit: 1,
+    // 检查章节是否有关联的知识点
+    const hasKnowledgePoints = await db.query.knowledgePoints.findFirst({
+      where: eq(knowledgePoints.chapterId, chapterId),
     });
 
-    if (relatedKnowledgePoints.length > 0) {
+    if (hasKnowledgePoints) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "该章节下存在知识点内容，不能删除。请先删除相关知识点后再尝试。",
-        },
+        { success: false, message: "章节下有知识点，请先删除所有关联的知识点" },
         { status: 400 }
       );
     }
 
     // 删除章节
-    await db.delete(chapters).where(eq(chapters.id, id));
+    await db.delete(chapters).where(eq(chapters.id, chapterId));
 
     return NextResponse.json({
       success: true,

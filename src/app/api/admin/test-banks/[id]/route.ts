@@ -21,11 +21,13 @@ const testBankSchema = z.object({
 // 获取单个题库
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const bankId = parseInt(id);
+    
+    if (isNaN(bankId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -53,7 +55,7 @@ export async function GET(
       LEFT JOIN 
         quiz_questions qq ON tb.id = qq.test_bank_id
       WHERE 
-        tb.id = ${id}
+        tb.id = ${bankId}
       GROUP BY 
         tb.id, es.name
     `;
@@ -83,11 +85,13 @@ export async function GET(
 // 更新题库
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const bankId = parseInt(id);
+    
+    if (isNaN(bankId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -99,7 +103,7 @@ export async function PUT(
 
     // 检查题库是否存在
     const existingBank = await db.query.testBanks.findFirst({
-      where: eq(testBanks.id, id),
+      where: eq(testBanks.id, bankId),
     });
 
     if (!existingBank) {
@@ -126,7 +130,7 @@ export async function PUT(
       const nameExists = await db.query.testBanks.findFirst({
         where: and(
           eq(testBanks.name, validatedData.name),
-          ne(testBanks.id, id)
+          ne(testBanks.id, bankId)
         ),
       });
 
@@ -142,7 +146,7 @@ export async function PUT(
     const questionCount = await db
       .select({ count: count() })
       .from(quizQuestions)
-      .where(eq(quizQuestions.testBankId, id))
+      .where(eq(quizQuestions.testBankId, bankId))
       .execute();
 
     const totalQuestions = questionCount[0]?.count || 0;
@@ -154,7 +158,7 @@ export async function PUT(
         totalQuestions, // 更新为实际题目数量
         updatedAt: new Date(),
       })
-      .where(eq(testBanks.id, id));
+      .where(eq(testBanks.id, bankId));
 
     // 获取更新后的题库信息
     const query = `
@@ -177,7 +181,7 @@ export async function PUT(
       LEFT JOIN 
         quiz_questions qq ON tb.id = qq.test_bank_id
       WHERE 
-        tb.id = ${id}
+        tb.id = ${bankId}
       GROUP BY 
         tb.id, es.name
     `;
@@ -207,11 +211,13 @@ export async function PUT(
 // 删除题库
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const bankId = parseInt(id);
+    
+    if (isNaN(bankId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -220,7 +226,7 @@ export async function DELETE(
 
     // 检查题库是否存在
     const testBank = await db.query.testBanks.findFirst({
-      where: eq(testBanks.id, id),
+      where: eq(testBanks.id, bankId),
     });
 
     if (!testBank) {
@@ -234,7 +240,7 @@ export async function DELETE(
     const questionCount = await db
       .select({ count: count() })
       .from(quizQuestions)
-      .where(eq(quizQuestions.testBankId, id))
+      .where(eq(quizQuestions.testBankId, bankId))
       .execute();
 
     if (questionCount[0]?.count > 0) {
@@ -245,7 +251,7 @@ export async function DELETE(
     }
 
     // 删除题库
-    await db.delete(testBanks).where(eq(testBanks.id, id));
+    await db.delete(testBanks).where(eq(testBanks.id, bankId));
 
     return NextResponse.json({
       success: true,

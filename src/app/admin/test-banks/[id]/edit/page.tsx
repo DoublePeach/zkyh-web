@@ -3,6 +3,13 @@
  * @author 郝桃桃
  * @date 2024-05-25
  */
+
+// 首先创建一个服务器组件作为入口点
+export default function EditTestBankPage({ params }: { params: { id: string } }) {
+  return <EditTestBankClient id={params.id} />;
+}
+
+// 然后创建一个客户端组件来处理所有逻辑
 "use client";
 
 import { useState, useEffect } from "react";
@@ -46,7 +53,7 @@ const formSchema = z.object({
 // 表单类型
 type FormValues = z.infer<typeof formSchema>;
 
-export default function EditTestBankPage({ params }: { params: { id: string } }) {
+function EditTestBankClient({ id }: { id: string }) {
   const [subjects, setSubjects] = useState<{ id: number; name: string }[]>([]);
   const [testBank, setTestBank] = useState<TestBank | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,14 +73,14 @@ export default function EditTestBankPage({ params }: { params: { id: string } })
         setIsLoading(true);
         
         // 获取题库详情
-        const id = parseInt(params.id);
-        if (isNaN(id)) {
+        const bankId = parseInt(id);
+        if (isNaN(bankId)) {
           toast.error("无效的题库ID");
           router.push("/admin/test-banks");
           return;
         }
         
-        const testBankResult = await getTestBank(id);
+        const testBankResult = await getTestBank(bankId);
         if (!testBankResult.success) {
           toast.error("获取题库失败", {
             description: testBankResult.message,
@@ -107,7 +114,7 @@ export default function EditTestBankPage({ params }: { params: { id: string } })
     }
 
     fetchData();
-  }, [params.id, router]);
+  }, [id, router]);
 
   // 初始化表单
   const form = useForm<FormValues>({

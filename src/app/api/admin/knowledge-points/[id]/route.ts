@@ -24,11 +24,13 @@ const knowledgePointSchema = z.object({
 // 获取单个知识点
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const pointId = parseInt(id);
+    
+    if (isNaN(pointId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -57,7 +59,7 @@ export async function GET(
     .leftJoin(chapters, eq(knowledgePoints.chapterId, chapters.id))
     .leftJoin(nursingDisciplines, eq(chapters.disciplineId, nursingDisciplines.id))
     .leftJoin(examSubjects, eq(knowledgePoints.subjectId, examSubjects.id))
-    .where(eq(knowledgePoints.id, id))
+    .where(eq(knowledgePoints.id, pointId))
     .execute();
 
     if (result.length === 0) {
@@ -83,11 +85,13 @@ export async function GET(
 // 更新知识点
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const pointId = parseInt(id);
+    
+    if (isNaN(pointId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -99,7 +103,7 @@ export async function PUT(
 
     // 检查知识点是否存在
     const existingPoint = await db.query.knowledgePoints.findFirst({
-      where: eq(knowledgePoints.id, id),
+      where: eq(knowledgePoints.id, pointId),
     });
 
     if (!existingPoint) {
@@ -142,7 +146,7 @@ export async function PUT(
         where: and(
           eq(knowledgePoints.chapterId, validatedData.chapterId),
           eq(knowledgePoints.title, validatedData.title),
-          ne(knowledgePoints.id, id)
+          ne(knowledgePoints.id, pointId)
         ),
       });
 
@@ -160,7 +164,7 @@ export async function PUT(
         ...validatedData,
         updatedAt: new Date(),
       })
-      .where(eq(knowledgePoints.id, id));
+      .where(eq(knowledgePoints.id, pointId));
 
     // 获取更新后的知识点信息
     const result = await db.select({
@@ -184,7 +188,7 @@ export async function PUT(
     .leftJoin(chapters, eq(knowledgePoints.chapterId, chapters.id))
     .leftJoin(nursingDisciplines, eq(chapters.disciplineId, nursingDisciplines.id))
     .leftJoin(examSubjects, eq(knowledgePoints.subjectId, examSubjects.id))
-    .where(eq(knowledgePoints.id, id))
+    .where(eq(knowledgePoints.id, pointId))
     .execute();
 
     return NextResponse.json({
@@ -210,11 +214,13 @@ export async function PUT(
 // 删除知识点
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const pointId = parseInt(id);
+    
+    if (isNaN(pointId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -223,7 +229,7 @@ export async function DELETE(
 
     // 检查知识点是否存在
     const knowledgePoint = await db.query.knowledgePoints.findFirst({
-      where: eq(knowledgePoints.id, id),
+      where: eq(knowledgePoints.id, pointId),
     });
 
     if (!knowledgePoint) {
@@ -234,7 +240,7 @@ export async function DELETE(
     }
 
     // 删除知识点
-    await db.delete(knowledgePoints).where(eq(knowledgePoints.id, id));
+    await db.delete(knowledgePoints).where(eq(knowledgePoints.id, pointId));
 
     return NextResponse.json({
       success: true,

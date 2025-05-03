@@ -3,6 +3,13 @@
  * @author 郝桃桃
  * @date 2024-05-24
  */
+
+// 首先创建一个服务器组件作为入口点
+export default function EditNursingDisciplinePage({ params }: { params: { id: string } }) {
+  return <EditNursingDisciplineClient id={params.id} />;
+}
+
+// 然后创建一个客户端组件来处理所有逻辑
 "use client";
 
 import { useState, useEffect } from "react";
@@ -45,7 +52,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function EditNursingDisciplinePage({ params }: { params: { id: string } }) {
+function EditNursingDisciplineClient({ id }: { id: string }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,14 +70,14 @@ export default function EditNursingDisciplinePage({ params }: { params: { id: st
   useEffect(() => {
     async function loadNursingDiscipline() {
       try {
-        const id = parseInt(params.id);
-        if (isNaN(id)) {
+        const disciplineId = parseInt(id);
+        if (isNaN(disciplineId)) {
           toast.error("无效的学科ID");
           router.push("/admin/nursing-disciplines");
           return;
         }
 
-        const response = await getNursingDiscipline(id);
+        const response = await getNursingDiscipline(disciplineId);
         
         if (response.success && response.data) {
           const discipline = response.data;
@@ -93,18 +100,18 @@ export default function EditNursingDisciplinePage({ params }: { params: { id: st
     }
 
     loadNursingDiscipline();
-  }, [params.id, router, form]);
+  }, [id, router, form]);
 
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      const id = parseInt(params.id);
-      if (isNaN(id)) {
+      const disciplineId = parseInt(id);
+      if (isNaN(disciplineId)) {
         toast.error("无效的学科ID");
         return;
       }
 
-      const response = await updateNursingDiscipline(id, data as NursingDisciplineRequest);
+      const response = await updateNursingDiscipline(disciplineId, data as NursingDisciplineRequest);
       
       if (response.success) {
         toast.success("学科更新成功");

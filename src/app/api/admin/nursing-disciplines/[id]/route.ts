@@ -1,37 +1,39 @@
 /**
  * @description 单个护理学科管理API
  * @author 郝桃桃
- * @date 2024-05-23
+ * @date 2024-05-25
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { nursingDisciplines, chapters } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
 
 // 请求验证Schema
 const nursingDisciplineSchema = z.object({
   name: z.string().min(1, "学科名称不能为空"),
   description: z.string().min(1, "学科描述不能为空"),
-  imageUrl: z.string().optional(),
 });
 
 // 获取单个护理学科
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const disciplineId = parseInt(id);
+    
+    if (isNaN(disciplineId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
       );
     }
 
+    // 获取护理学科信息
     const discipline = await db.query.nursingDisciplines.findFirst({
-      where: eq(nursingDisciplines.id, id),
+      where: eq(nursingDisciplines.id, disciplineId),
     });
 
     if (!discipline) {
@@ -41,9 +43,19 @@ export async function GET(
       );
     }
 
+    // 获取章节数量
+    const chapterCount = await db
+      .select({ count: count() })
+      .from(chapters)
+      .where(eq(chapters.disciplineId, disciplineId))
+      .execute();
+
     return NextResponse.json({
       success: true,
-      data: discipline,
+      data: {
+        ...discipline,
+        chapterCount: chapterCount[0]?.count || 0,
+      },
     });
   } catch (error) {
     console.error("获取护理学科失败:", error);
@@ -57,11 +69,13 @@ export async function GET(
 // 更新护理学科
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const disciplineId = parseInt(id);
+    
+    if (isNaN(disciplineId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -71,9 +85,9 @@ export async function PUT(
     const body = await req.json();
     const validatedData = nursingDisciplineSchema.parse(body);
 
-    // 检查学科是否存在
+    // 检查护理学科是否存在
     const existingDiscipline = await db.query.nursingDisciplines.findFirst({
-      where: eq(nursingDisciplines.id, id),
+      where: eq(nursingDisciplines.id, disciplineId),
     });
 
     if (!existingDiscipline) {
@@ -83,37 +97,50 @@ export async function PUT(
       );
     }
 
-    // 如果更新名称，检查名称是否已被其他学科使用
+    // 如果更改了名称，检查是否已存在同名学科
     if (validatedData.name !== existingDiscipline.name) {
       const nameExists = await db.query.nursingDisciplines.findFirst({
-        where: eq(nursingDisciplines.name, validatedData.name),
+        where: and(
+          eq(nursingDisciplines.name, validatedData.name),
+          ne(nursingDisciplines.id, disciplineId)
+        ),
       });
 
       if (nameExists) {
         return NextResponse.json(
-          { success: false, message: "学科名称已存在" },
+          { success: false, message: "已存在同名护理学科" },
           { status: 400 }
         );
       }
     }
 
-    // 更新学科
+    // 更新护理学科
     await db.update(nursingDisciplines)
       .set({
         ...validatedData,
         updatedAt: new Date(),
       })
-      .where(eq(nursingDisciplines.id, id));
+      .where(eq(nursingDisciplines.id, disciplineId));
 
-    // 获取更新后的学科
+    // 获取更新后的护理学科信息
     const updatedDiscipline = await db.query.nursingDisciplines.findFirst({
-      where: eq(nursingDisciplines.id, id),
+      where: eq(nursingDisciplines.id, disciplineId),
     });
+
+    // 获取章节数量
+    const chapterCount = await db
+      .select({ count: count() })
+      .from(chapters)
+      .where(eq(chapters.disciplineId, disciplineId))
+      .execute();
 
     return NextResponse.json({
       success: true,
       message: "护理学科更新成功",
-      data: updatedDiscipline,
+      data: {
+        ...updatedDiscipline,
+        chapterCount: chapterCount[0]?.count || 0,
+      },
     });
   } catch (error) {
     console.error("更新护理学科失败:", error);
@@ -133,20 +160,22 @@ export async function PUT(
 // 删除护理学科
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const disciplineId = parseInt(id);
+    
+    if (isNaN(disciplineId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
       );
     }
 
-    // 检查学科是否存在
+    // 检查护理学科是否存在
     const discipline = await db.query.nursingDisciplines.findFirst({
-      where: eq(nursingDisciplines.id, id),
+      where: eq(nursingDisciplines.id, disciplineId),
     });
 
     if (!discipline) {
@@ -156,24 +185,20 @@ export async function DELETE(
       );
     }
 
-    // 检查是否有关联的章节，如果有则不允许删除
-    const relatedChapters = await db.query.chapters.findMany({
-      where: eq(chapters.disciplineId, id),
-      limit: 1,
+    // 检查是否有关联的章节
+    const hasChapters = await db.query.chapters.findFirst({
+      where: eq(chapters.disciplineId, disciplineId),
     });
 
-    if (relatedChapters.length > 0) {
+    if (hasChapters) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: "该学科下存在章节内容，不能删除。请先删除相关章节后再尝试。" 
-        },
+        { success: false, message: "该护理学科下有章节内容，请先删除所有关联的章节" },
         { status: 400 }
       );
     }
 
-    // 删除学科
-    await db.delete(nursingDisciplines).where(eq(nursingDisciplines.id, id));
+    // 删除护理学科
+    await db.delete(nursingDisciplines).where(eq(nursingDisciplines.id, disciplineId));
 
     return NextResponse.json({
       success: true,

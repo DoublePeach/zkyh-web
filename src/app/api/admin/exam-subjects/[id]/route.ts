@@ -19,11 +19,13 @@ const examSubjectSchema = z.object({
 // 获取单个考试科目
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const subjectId = parseInt(id);
+    
+    if (isNaN(subjectId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -31,7 +33,7 @@ export async function GET(
     }
 
     const subject = await db.query.examSubjects.findFirst({
-      where: eq(examSubjects.id, id),
+      where: eq(examSubjects.id, subjectId),
     });
 
     if (!subject) {
@@ -57,11 +59,13 @@ export async function GET(
 // 更新考试科目
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const subjectId = parseInt(id);
+    
+    if (isNaN(subjectId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -73,7 +77,7 @@ export async function PUT(
 
     // 检查科目是否存在
     const existingSubject = await db.query.examSubjects.findFirst({
-      where: eq(examSubjects.id, id),
+      where: eq(examSubjects.id, subjectId),
     });
 
     if (!existingSubject) {
@@ -103,11 +107,11 @@ export async function PUT(
         ...validatedData,
         updatedAt: new Date(),
       })
-      .where(eq(examSubjects.id, id));
+      .where(eq(examSubjects.id, subjectId));
 
     // 获取更新后的科目
     const updatedSubject = await db.query.examSubjects.findFirst({
-      where: eq(examSubjects.id, id),
+      where: eq(examSubjects.id, subjectId),
     });
 
     return NextResponse.json({
@@ -133,11 +137,13 @@ export async function PUT(
 // 删除考试科目
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const subjectId = parseInt(id);
+    
+    if (isNaN(subjectId)) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -146,7 +152,7 @@ export async function DELETE(
 
     // 检查科目是否存在
     const subject = await db.query.examSubjects.findFirst({
-      where: eq(examSubjects.id, id),
+      where: eq(examSubjects.id, subjectId),
     });
 
     if (!subject) {
@@ -159,7 +165,7 @@ export async function DELETE(
     // TODO: 检查是否有关联的知识点或题库，如果有则不允许删除
 
     // 删除科目
-    await db.delete(examSubjects).where(eq(examSubjects.id, id));
+    await db.delete(examSubjects).where(eq(examSubjects.id, subjectId));
 
     return NextResponse.json({
       success: true,
