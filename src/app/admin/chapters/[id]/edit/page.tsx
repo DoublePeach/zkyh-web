@@ -1,298 +1,51 @@
 /**
- * @description 编辑章节页面
+ * @description 编辑章节页面 (Server Component Shell)
  * @author 郝桃桃
  * @date 2024-05-24
  */
+import EditChapterClient from './components/EditChapterClient';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
-// 首先创建一个服务器组件作为入口点
-export default function EditChapterPage({ params }: { params: { id: string } }) {
-  return <EditChapterClient id={params.id} />;
+interface EditChapterPageProps {
+  params: { id: string };
 }
 
-// 然后创建一个客户端组件来处理所有逻辑
-"use client";
+// Make it async to handle params correctly
+export default async function EditChapterPage({ params }: EditChapterPageProps) {
+    const resolvedParams = await params;
+    const chapterId = resolvedParams.id;
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { getChapter, updateChapter, ChapterRequest } from "@/lib/services/chapter-service";
-import { getAllNursingDisciplines, NursingDiscipline } from "@/lib/services/nursing-discipline-service";
-
-// 表单验证Schema
-const formSchema = z.object({
-  disciplineId: z.string().min(1, "请选择护理学科"),
-  name: z.string().min(1, "章节名称不能为空"),
-  description: z.string().min(1, "章节描述不能为空"),
-  orderIndex: z.coerce.number().int().min(1, "章节顺序必须大于0"),
-});
-
-type FormData = z.infer<typeof formSchema>;
-
-function EditChapterClient({ id }: { id: string }) {
-  const router = useRouter();
-  const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      disciplineId: "",
-      name: "",
-      description: "",
-      orderIndex: 1,
-    },
-  });
-
-  // 获取所有护理学科和章节数据
-  useEffect(() => {
-    async function loadData() {
-      try {
-        // 加载护理学科
-        const disciplinesResponse = await getAllNursingDisciplines();
-        if (!disciplinesResponse.success || !disciplinesResponse.data) {
-          toast.error("获取护理学科失败: " + (disciplinesResponse.error || "未知错误"));
-          router.push("/admin/chapters");
-          return;
-        }
-        setDisciplines(disciplinesResponse.data);
-        
-        // 加载章节详情
-        const chapterId = parseInt(id);
-        if (isNaN(chapterId)) {
-          toast.error("无效的章节ID");
-          router.push("/admin/chapters");
-          return;
-        }
-
-        const chapterResponse = await getChapter(chapterId);
-        if (!chapterResponse.success || !chapterResponse.data) {
-          toast.error("获取章节详情失败: " + (chapterResponse.error || "未知错误"));
-          router.push("/admin/chapters");
-          return;
-        }
-
-        const chapter = chapterResponse.data;
-        form.reset({
-          disciplineId: chapter.disciplineId.toString(),
-          name: chapter.name,
-          description: chapter.description,
-          orderIndex: chapter.orderIndex,
-        });
-      } catch (error) {
-        console.error("加载数据失败:", error);
-        toast.error("加载数据失败");
-        router.push("/admin/chapters");
-      } finally {
-        setIsLoading(false);
-      }
+    if (!chapterId || isNaN(parseInt(chapterId))){
+         return <div>无效的章节 ID</div>;
     }
-
-    loadData();
-  }, [id, router, form]);
-
-  async function onSubmit(data: FormData) {
-    setIsSubmitting(true);
-    try {
-      const chapterId = parseInt(id);
-      if (isNaN(chapterId)) {
-        toast.error("无效的章节ID");
-        return;
-      }
-
-      // 创建章节请求对象
-      const chapterData: ChapterRequest = {
-        disciplineId: parseInt(data.disciplineId),
-        name: data.name,
-        description: data.description,
-        orderIndex: data.orderIndex
-      };
-      
-      const response = await updateChapter(chapterId, chapterData);
-      
-      if (response.success) {
-        toast.success("章节更新成功");
-        router.push("/admin/chapters");
-      } else {
-        toast.error("更新失败: " + (response.error || response.message || "未知错误"));
-      }
-    } catch (error) {
-      console.error("提交失败:", error);
-      toast.error("更新失败，请重试");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  // 获取学科名称
-  function getDisciplineName(id: string): string {
-    const discipline = disciplines.find(d => d.id === parseInt(id));
-    return discipline ? discipline.name : "";
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-6">
-        <p className="text-muted-foreground">正在加载章节信息...</p>
-      </div>
-    );
-  }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">编辑章节</h1>
-        <Link
+        <div>
+            <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" asChild className="h-8 w-8">
+                    <Link href="/admin/chapters">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Link>
+                </Button>
+                <h1 className="text-xl font-bold tracking-tight">编辑章节</h1>
+            </div>
+                <p className="text-muted-foreground text-sm mt-2 ml-10">
+                编辑现有章节的信息。
+            </p>
+        </div>
+         <Link
           href="/admin/chapters"
           className="text-sm text-muted-foreground hover:text-foreground"
         >
-          返回章节列表
+          返回列表
         </Link>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>章节信息</CardTitle>
-          <CardDescription>
-            编辑护理学科章节
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="disciplineId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>所属护理学科</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="选择护理学科" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {disciplines.map((discipline) => (
-                          <SelectItem
-                            key={discipline.id}
-                            value={discipline.id.toString()}
-                          >
-                            {discipline.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="orderIndex"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>章节顺序</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>章节名称</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="如：第1章 内科护理基本概念和理论" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>章节描述</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="章节的详细描述和内容概要" 
-                        rows={4}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex justify-end space-x-4 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/admin/chapters")}
-                  disabled={isSubmitting}
-                >
-                  取消
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "保存中..." : "保存更改"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+        
+        <EditChapterClient id={chapterId} />
     </div>
   );
 } 

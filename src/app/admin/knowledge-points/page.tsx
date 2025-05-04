@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useSearchParams } from 'next/navigation';
 import {
   Select,
   SelectContent,
@@ -37,12 +38,15 @@ import {
 } from "@/lib/services/exam-subject-service";
 
 export default function KnowledgePointsPage() {
+  const searchParams = useSearchParams();
+  const initialChapterId = searchParams.get('chapterId');
+
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [subjects, setSubjects] = useState<ExamSubject[]>([]);
   const [selectedDiscipline, setSelectedDiscipline] = useState<string>("all");
-  const [selectedChapter, setSelectedChapter] = useState<string>("all");
+  const [selectedChapter, setSelectedChapter] = useState<string>(initialChapterId || "all");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -51,17 +55,37 @@ export default function KnowledgePointsPage() {
   // 获取所有护理学科和考试科目
   useEffect(() => {
     async function loadData() {
+      setIsLoading(true);
       try {
-        // 获取护理学科
-        const disciplinesResponse = await getAllNursingDisciplines();
+        const [disciplinesResponse, subjectsResponse] = await Promise.all([
+          getAllNursingDisciplines(),
+          getAllExamSubjects()
+        ]);
+
         if (disciplinesResponse.success && disciplinesResponse.data) {
           setDisciplines(disciplinesResponse.data);
+          if (initialChapterId) {
+            const chapterResponse = await fetch(`/api/admin/chapters/${initialChapterId}`);
+            if(chapterResponse.ok){
+              const chapterResult = await chapterResponse.json();
+              if(chapterResult.success && chapterResult.data?.disciplineId){
+                const initialDisciplineId = chapterResult.data.disciplineId.toString();
+                if(disciplinesResponse.data.some(d => d.id.toString() === initialDisciplineId)){
+                  setSelectedDiscipline(initialDisciplineId);
+                } else {
+                  console.warn("Initial chapter's discipline not found in the list.");
+                }
+              } else {
+                console.warn(`Failed to fetch details for initial chapter ${initialChapterId}`);
+              }
+            } else {
+              console.warn(`Failed to fetch details for initial chapter ${initialChapterId}`);
+            }
+          }
         } else {
           toast.error("获取护理学科失败: " + (disciplinesResponse.error || "未知错误"));
         }
 
-        // 获取考试科目
-        const subjectsResponse = await getAllExamSubjects();
         if (subjectsResponse.success && subjectsResponse.data) {
           setSubjects(subjectsResponse.data);
         } else {
@@ -71,21 +95,23 @@ export default function KnowledgePointsPage() {
         console.error("初始化数据失败:", error);
         toast.error("加载数据失败");
       } finally {
-        setIsLoading(false);
       }
     }
 
     loadData();
-  }, []);
+  }, [initialChapterId]);
 
   // 基于选择的学科获取章节
   useEffect(() => {
     if (selectedDiscipline === "all") {
       setChapters([]);
-      setSelectedChapter("all");
+      if (!initialChapterId || selectedChapter !== initialChapterId) {
+        setSelectedChapter("all");
+      }
       return;
     }
 
+    let isMounted = true;
     setIsLoading(true);
     
     async function loadChapters() {
@@ -93,21 +119,28 @@ export default function KnowledgePointsPage() {
         const disciplineId = parseInt(selectedDiscipline);
         const chaptersResponse = await getAllChapters(disciplineId);
         
-        if (chaptersResponse.success && chaptersResponse.data) {
-          setChapters(chaptersResponse.data);
-        } else {
-          toast.error("获取章节失败: " + (chaptersResponse.error || "未知错误"));
+        if (isMounted) {
+          if (chaptersResponse.success && chaptersResponse.data) {
+            setChapters(chaptersResponse.data);
+            if (initialChapterId && selectedChapter === initialChapterId && !chaptersResponse.data.some(c => c.id.toString() === initialChapterId)) {
+              setSelectedChapter("all");
+            }
+          } else {
+            toast.error("获取章节失败: " + (chaptersResponse.error || "未知错误"));
+            setChapters([]);
+          }
         }
       } catch (error) {
         console.error("获取章节失败:", error);
-        toast.error("获取章节失败");
+        if(isMounted) toast.error("获取章节失败");
+        if(isMounted) setChapters([]);
       } finally {
-        setIsLoading(false);
       }
     }
 
     loadChapters();
-  }, [selectedDiscipline]);
+    return () => { isMounted = false; };
+  }, [selectedDiscipline, initialChapterId, selectedChapter]);
 
   // 加载知识点数据
   const loadKnowledgePoints = async () => {
@@ -153,7 +186,6 @@ export default function KnowledgePointsPage() {
 
   // 基于筛选条件获取知识点
   useEffect(() => {
-    // 加载知识点数据
     loadKnowledgePoints();
   }, [selectedDiscipline, selectedChapter, selectedSubject, searchTerm]);
 

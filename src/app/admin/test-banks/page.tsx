@@ -31,6 +31,7 @@ export default function TestBanksPage() {
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // 题库类型
   const bankTypes = [
@@ -58,8 +59,6 @@ export default function TestBanksPage() {
         toast.error("出错了", {
           description: "获取考试科目时发生错误",
         });
-      } finally {
-        setIsLoading(false);
       }
     }
 
@@ -68,44 +67,71 @@ export default function TestBanksPage() {
 
   // 基于选择的科目和类型获取题库
   useEffect(() => {
-    // 如果没有选择值且处于首次加载状态，不加载题库
-    if (isLoading && selectedSubject === "all" && selectedType === "all") {
-      return;
-    }
-
+    let isMounted = true; // Prevent state update on unmounted component
+    
     async function fetchTestBanks() {
-      setIsLoading(true);
+      // Always set loading to true when fetching
+      setIsLoading(true); 
+      setError(null); // Clear previous errors
+      
       try {
-        const options: { subjectId?: number; type?: string } = {};
-        
+        // Build API URL conditionally
+        let apiUrl = '/api/admin/test-banks';
+        const queryParams = new URLSearchParams();
         if (selectedSubject !== "all") {
-          options.subjectId = parseInt(selectedSubject);
+          queryParams.append('subjectId', selectedSubject);
         }
-        
         if (selectedType !== "all") {
-          options.type = selectedType;
+          queryParams.append('type', selectedType);
         }
-        
-        const result = await getAllTestBanks(options);
-        
-        if (result.success) {
-          setTestBanks(result.data || []);
-        } else {
-          toast.error("获取题库失败", {
-            description: result.message,
-          });
+        const queryString = queryParams.toString();
+        if (queryString) {
+          apiUrl += `?${queryString}`;
         }
-      } catch (error) {
+
+        console.log(`Fetching test banks from: ${apiUrl}`); // Log the API URL
+
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const result = await response.json();
+        
+        if (isMounted) { // Check if component is still mounted
+            if (result.success) {
+              setTestBanks(result.data || []);
+            } else {
+              toast.error("获取题库失败", {
+                description: result.message || '未知错误',
+              });
+              setTestBanks([]); // Clear data on error
+              setError(result.message || '获取题库失败');
+            }
+        }
+      } catch (error: any) {
         console.error("获取题库出错:", error);
-        toast.error("出错了", {
-          description: "获取题库时发生错误",
-        });
+         if (isMounted) {
+            toast.error("出错了", {
+              description: error.message || "获取题库时发生错误",
+            });
+            setTestBanks([]); // Clear data on error
+            setError(error.message || '获取题库时发生错误');
+         }
       } finally {
-        setIsLoading(false);
+         if (isMounted) {
+             setIsLoading(false);
+         }
       }
     }
 
     fetchTestBanks();
+
+    // Cleanup function
+    return () => {
+        isMounted = false;
+    };
+    
+  // Re-run whenever filters change
   }, [selectedSubject, selectedType]);
 
   // 重置所有筛选条件

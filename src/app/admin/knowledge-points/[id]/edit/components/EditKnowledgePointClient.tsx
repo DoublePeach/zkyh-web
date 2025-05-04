@@ -1,10 +1,10 @@
-/**
- * @description 添加知识点页面
- * @author 郝桃桃
- * @date 2024-05-25
- */
 "use client";
 
+/**
+ * @description 编辑知识点客户端组件
+ * @author 郝桃桃
+ * @date 2024-05-27
+ */
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -45,7 +45,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { createKnowledgePoint, KnowledgePointRequest } from "@/lib/services/knowledge-point-service";
+import { 
+  getKnowledgePoint, 
+  updateKnowledgePoint, 
+  KnowledgePointRequest 
+} from "@/lib/services/knowledge-point-service";
 import { getAllNursingDisciplines, NursingDiscipline } from "@/lib/services/nursing-discipline-service";
 import { getAllChapters, Chapter } from "@/lib/services/chapter-service";
 import { getAllExamSubjects, ExamSubject } from "@/lib/services/exam-subject-service";
@@ -65,12 +69,16 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function NewKnowledgePointPage() {
+interface EditKnowledgePointClientProps {
+    id: string;
+}
+
+export default function EditKnowledgePointClient({ id }: EditKnowledgePointClientProps) {
   const router = useRouter();
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [subjects, setSubjects] = useState<ExamSubject[]>([]);
-  const [isLoadingDisciplines, setIsLoadingDisciplines] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
@@ -90,72 +98,124 @@ export default function NewKnowledgePointPage() {
     },
   });
 
-  // Watch the disciplineId value outside useEffect
-  const watchedDisciplineId = form.watch("disciplineId");
-
-  // 获取所有护理学科和考试科目
+  // 加载知识点详情和主数据
   useEffect(() => {
     async function loadData() {
-      setIsLoadingDisciplines(true);
+      setIsLoading(true);
       try {
-        // 获取护理学科
-        const disciplinesResponse = await getAllNursingDisciplines();
-        if (disciplinesResponse.success && disciplinesResponse.data) {
-          setDisciplines(disciplinesResponse.data);
-        } else {
+        const knowledgePointId = parseInt(id);
+        if (isNaN(knowledgePointId)) {
+          toast.error("无效的知识点ID");
+          router.push("/admin/knowledge-points");
+          return;
+        }
+
+        // Fetch all data concurrently
+        const [disciplinesResponse, subjectsResponse, response] = await Promise.all([
+            getAllNursingDisciplines(),
+            getAllExamSubjects(),
+            getKnowledgePoint(knowledgePointId)
+        ]);
+
+        // Check disciplines
+        if (!disciplinesResponse.success || !disciplinesResponse.data) {
           toast.error("获取护理学科失败: " + (disciplinesResponse.error || "未知错误"));
+          // Continue loading other data even if this fails?
+        } else {
+            setDisciplines(disciplinesResponse.data);
         }
         
-        // 获取考试科目
-        const subjectsResponse = await getAllExamSubjects();
-        if (subjectsResponse.success && subjectsResponse.data) {
-          setSubjects(subjectsResponse.data);
-        } else {
+        // Check subjects
+        if (!subjectsResponse.success || !subjectsResponse.data) {
           toast.error("获取考试科目失败: " + (subjectsResponse.error || "未知错误"));
+        } else {
+            setSubjects(subjectsResponse.data);
         }
+
+        // Check knowledge point details
+        if (!response.success || !response.data) {
+          toast.error("获取知识点详情失败: " + (response.error || "未知错误"));
+          router.push("/admin/knowledge-points");
+          return;
+        }
+
+        const knowledgePoint = response.data;
+
+        // Load chapters based on the fetched knowledge point's discipline
+        if (knowledgePoint.disciplineId) {
+            const chaptersResponse = await getAllChapters(knowledgePoint.disciplineId);
+            if (chaptersResponse.success && chaptersResponse.data) {
+              setChapters(chaptersResponse.data);
+            }
+            // Don't toast error here, might be expected if discipline has no chapters yet
+        }
+
+        // 格式化关键词和标签
+        const keywordsString = knowledgePoint.keywords ? knowledgePoint.keywords.join(',') : '';
+        const tagsString = knowledgePoint.tags ? formatTags(knowledgePoint.tags) : '';
+
+        // 设置表单默认值
+        form.reset({
+          title: knowledgePoint.title,
+          content: knowledgePoint.content,
+          disciplineId: knowledgePoint.disciplineId?.toString() || "",
+          chapterId: knowledgePoint.chapterId.toString(),
+          subjectId: knowledgePoint.subjectId.toString(),
+          difficulty: knowledgePoint.difficulty,
+          importance: knowledgePoint.importance,
+          keywords: keywordsString,
+          tags: tagsString,
+        });
       } catch (error) {
-        console.error("初始化数据失败:", error);
+        console.error("加载数据失败:", error);
         toast.error("加载数据失败");
+        router.push("/admin/knowledge-points");
       } finally {
-        setIsLoadingDisciplines(false);
+        setIsLoading(false);
       }
     }
 
     loadData();
-  }, []);
+  }, [id, router, form]); // Keep form in dependency for reset
 
-  // 基于选择的学科获取章节
+  // Based on selected discipline, fetch chapters
+  const watchDisciplineId = form.watch("disciplineId");
   useEffect(() => {
-    // Use the watched value
-    if (!watchedDisciplineId || watchedDisciplineId === "") { 
-      setChapters([]);
-      // Reset chapterId field when discipline changes to none
-      // Note: Directly calling setValue inside useEffect dependent on watched value
-      // can sometimes lead to complex state interactions. Consider if this reset
-      // could happen elsewhere or if the dependency on `form.setValue` is needed.
-      // For now, we assume form.setValue reference is stable enough or this effect
-      // primarily runs due to watchedDisciplineId change.
-      form.setValue("chapterId", ""); 
-      return;
+    if (!watchDisciplineId || watchDisciplineId === "") {
+        setChapters([]); // Clear chapters if no discipline selected
+        // Optionally reset chapterId field if discipline is cleared
+        // const currentChapter = form.getValues("chapterId");
+        // if (currentChapter !== "") {
+        //     form.setValue("chapterId", "");
+        // }
+        return;
     }
+
+    // Avoid fetching if initial data is still loading (unless disciplineId changed)
+    // This check might need refinement depending on exact loading flow
+    // if (isLoading && form.formState.defaultValues?.disciplineId === watchDisciplineId) {
+    //     return;
+    // }
 
     let isMounted = true;
     setIsLoadingChapters(true);
     
     async function loadChapters() {
       try {
-        const discId = parseInt(watchedDisciplineId);
-        if (isNaN(discId)) {
-            if(isMounted) setChapters([]);
-            if(isMounted) form.setValue("chapterId", ""); 
-            return; 
-        }
+        const discId = parseInt(watchDisciplineId);
+        if (isNaN(discId)) return; // Should not happen if select value is correct
 
         const chaptersResponse = await getAllChapters(discId);
         
         if(isMounted){
             if (chaptersResponse.success && chaptersResponse.data) {
               setChapters(chaptersResponse.data);
+              
+              // Reset chapter selection if current selection is not in the new list
+              const currentChapterId = form.getValues("chapterId");
+              if (currentChapterId && !chaptersResponse.data.some(c => c.id.toString() === currentChapterId)) {
+                  form.setValue("chapterId", ""); 
+              }
             } else {
               toast.error("获取章节失败: " + (chaptersResponse.error || "未知错误"));
               setChapters([]); // Clear on error
@@ -164,71 +224,105 @@ export default function NewKnowledgePointPage() {
         }
       } catch (error) {
         console.error("获取章节失败:", error);
-         if(isMounted) toast.error("获取章节失败");
-         if(isMounted) setChapters([]); // Clear on error
-         if(isMounted) form.setValue("chapterId", ""); // Reset chapter selection
+        if(isMounted) toast.error("获取章节失败");
+        if(isMounted) setChapters([]); // Clear on error
+        if(isMounted) form.setValue("chapterId", ""); // Reset chapter selection
       } finally {
         if(isMounted) setIsLoadingChapters(false);
       }
     }
 
     loadChapters();
-
-    // Cleanup function
     return () => { isMounted = false; };
 
-  // Correct dependency: ONLY depend on the actual watched value
-  }, [watchedDisciplineId]); // Remove `form` from dependencies
+  }, [watchDisciplineId, form]); // Depend on watched value and form
+
+  // 将JSON对象格式化为字符串
+  function formatTags(tags: Record<string, any>): string {
+    if (!tags || Object.keys(tags).length === 0) return '';
+    
+    return Object.entries(tags)
+      .map(([key, value]) => `"${key}": ${typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}`) // Ensure values are stringified if not string
+      .join(', ');
+  }
+
+  // Parse tags string back to object
+  function parseTags(tagsString: string | undefined): Record<string, any> | undefined {
+      if (!tagsString || tagsString.trim() === '') return undefined;
+      try {
+          // Need to wrap the string in {} to make it valid JSON
+          return JSON.parse(`{${tagsString}}`);
+      } catch (e) {
+          console.error("Failed to parse tags JSON string:", e);
+          toast.error("标签格式错误", { description: "请输入有效的 JSON key-value 对，例如 \"type\": \"理论\""});
+          return undefined; // Indicate parsing failure
+      }
+  }
 
   async function onSubmit(data: FormData) {
+    const parsedTags = parseTags(data.tags);
+    if (data.tags && !parsedTags) { // Check if tags were provided but failed to parse
+        toast.error("提交失败", { description: "请修正标签字段中的 JSON 格式错误。"});
+        setActiveTab("meta"); // Switch to the tab with the error
+        return; // Prevent submission
+    }
+
     setIsSubmitting(true);
     try {
-      // 格式化数据，转换关键词为数组，标签为JSON对象
+      const knowledgePointId = parseInt(id);
+      if (isNaN(knowledgePointId)) {
+        toast.error("无效的知识点ID");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 格式化数据
       const formattedData: KnowledgePointRequest = {
+        // disciplineId is derived from chapterId on the backend, not sent directly?
+        // Check if your service/API expects disciplineId
         chapterId: parseInt(data.chapterId),
         subjectId: parseInt(data.subjectId),
         title: data.title,
         content: data.content,
-        difficulty: data.difficulty,
-        importance: data.importance,
-        keywords: data.keywords ? data.keywords.split(',').map(k => k.trim()) : undefined,
-        tags: data.tags ? JSON.parse(`{${data.tags}}`) : undefined,
+        difficulty: data.difficulty, // Already number due to coerce
+        importance: data.importance, // Already number due to coerce
+        keywords: data.keywords ? data.keywords.split(',').map(k => k.trim()).filter(k => k !== '') : [], // Ensure empty strings are filtered
+        tags: parsedTags, // Use parsed object
       };
       
-      // 调用API保存数据
-      const response = await createKnowledgePoint(formattedData);
+      const response = await updateKnowledgePoint(knowledgePointId, formattedData);
       
       if (response.success) {
-        toast.success("知识点添加成功");
+        toast.success("知识点更新成功");
         router.push("/admin/knowledge-points");
+        router.refresh();
       } else {
-        toast.error("添加失败: " + (response.error || response.message || "未知错误"));
+        toast.error("更新失败: " + (response.error || response.message || "未知错误"));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("提交失败:", error);
-      toast.error("添加失败，请重试");
+      toast.error("更新失败，请重试", { description: error.message });
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-6">
+        <p className="text-muted-foreground">正在加载知识点信息...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">添加知识点</h1>
-        <Link
-          href="/admin/knowledge-points"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          返回知识点列表
-        </Link>
-      </div>
-
+      {/* Header removed */}
       <Card>
         <CardHeader>
           <CardTitle>知识点信息</CardTitle>
           <CardDescription>
-            添加新的护理学科知识点
+            编辑护理学科知识点
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -242,7 +336,7 @@ export default function NewKnowledgePointPage() {
                 </TabsList>
                 
                 <TabsContent value="basic" className="space-y-4">
-                  {/* 基本信息表单 */}
+                  {/* Basic Info Form */}
                   <div className="grid gap-4 grid-cols-2">
                     <FormField
                       control={form.control}
@@ -251,9 +345,14 @@ export default function NewKnowledgePointPage() {
                         <FormItem>
                           <FormLabel>所属护理学科</FormLabel>
                           <Select
-                            disabled={isLoadingDisciplines}
-                            onValueChange={field.onChange}
+                            onValueChange={(value) => {
+                                field.onChange(value); 
+                                // Reset chapter when discipline changes
+                                form.setValue('chapterId', ''); 
+                                setChapters([]); // Clear chapter options immediately
+                            }}
                             value={field.value}
+                            disabled={isLoading}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -283,13 +382,13 @@ export default function NewKnowledgePointPage() {
                         <FormItem>
                           <FormLabel>所属章节</FormLabel>
                           <Select
-                            disabled={isLoadingChapters || !form.watch("disciplineId")}
+                            disabled={isLoadingChapters || !watchDisciplineId || chapters.length === 0}
                             onValueChange={field.onChange}
                             value={field.value}
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="选择章节" />
+                                <SelectValue placeholder={!watchDisciplineId ? "请先选学科" : (isLoadingChapters ? "加载中..." : "选择章节")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -316,9 +415,9 @@ export default function NewKnowledgePointPage() {
                       <FormItem>
                         <FormLabel>所属考试科目</FormLabel>
                         <Select
-                          disabled={isLoadingDisciplines}
                           onValueChange={field.onChange}
                           value={field.value}
+                          disabled={isLoading}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -370,7 +469,7 @@ export default function NewKnowledgePointPage() {
                 </TabsContent>
                 
                 <TabsContent value="content" className="space-y-4">
-                  {/* 知识点内容表单 */}
+                  {/* Knowledge Point Content Form */}
                   <FormField
                     control={form.control}
                     name="content"
@@ -409,7 +508,7 @@ export default function NewKnowledgePointPage() {
                 </TabsContent>
                 
                 <TabsContent value="meta" className="space-y-4">
-                  {/* 元数据设置表单 */}
+                  {/* Metadata Form */}
                   <div className="grid gap-6 grid-cols-2">
                     <FormField
                       control={form.control}
@@ -417,14 +516,15 @@ export default function NewKnowledgePointPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            难度级别: {field.value}
+                            难度级别: {field.value || '未设置'} {/* Show something if default is used*/}
                           </FormLabel>
                           <FormControl>
                             <Slider
                               min={1}
                               max={5}
                               step={1}
-                              defaultValue={[field.value]}
+                              defaultValue={[field.value || 3]} // Default slider position
+                              value={[field.value || 3]} // Control slider value
                               onValueChange={(vals: number[]) => field.onChange(vals[0])}
                               className="pt-2"
                             />
@@ -443,14 +543,15 @@ export default function NewKnowledgePointPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            重要程度: {field.value}
+                            重要程度: {field.value || '未设置'}
                           </FormLabel>
                           <FormControl>
                             <Slider
                               min={1}
                               max={5}
                               step={1}
-                              defaultValue={[field.value]}
+                              defaultValue={[field.value || 3]}
+                              value={[field.value || 3]}
                               onValueChange={(vals: number[]) => field.onChange(vals[0])}
                               className="pt-2"
                             />
@@ -472,7 +573,7 @@ export default function NewKnowledgePointPage() {
                         <FormLabel>关键词</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="输入关键词，用逗号分隔"
+                            placeholder="输入关键词，用英文逗号分隔"
                             {...field}
                           />
                         </FormControl>
@@ -492,7 +593,7 @@ export default function NewKnowledgePointPage() {
                         <FormLabel>标签 (JSON格式)</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder='输入JSON格式的标签，如："type": "理论", "level": "初级"'
+                            placeholder='输入JSON格式，如："type": "理论", "level": "初级"'
                             {...field}
                           />
                         </FormControl>
@@ -524,9 +625,9 @@ export default function NewKnowledgePointPage() {
                       </Button>
                       <Button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isLoading}
                       >
-                        {isSubmitting ? "保存中..." : "保存知识点"}
+                        {isSubmitting ? "保存中..." : "保存更改"}
                       </Button>
                     </div>
                   </div>

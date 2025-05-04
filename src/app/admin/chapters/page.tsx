@@ -189,7 +189,7 @@ export default function ChaptersPage() {
                       </Link>
                       <span className="text-gray-300">|</span>
                       <Link
-                        href={`/admin/chapters/${chapter.id}/knowledge-points`}
+                        href={`/admin/knowledge-points?chapterId=${chapter.id}`}
                         className="text-green-600 hover:underline"
                       >
                         知识点

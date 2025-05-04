@@ -72,7 +72,7 @@ export default function NursingDisciplinesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">护理学科管理</h1>
           <p className="text-muted-foreground">
-            管理护理职称考试的六个主要学科
+            管理护理职称考试的学科
           </p>
         </div>
         <Link

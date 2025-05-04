@@ -24,6 +24,7 @@ const navLinks = [
   { href: "/admin/chapters", label: "章节管理" },
   { href: "/admin/knowledge-points", label: "知识点" },
   { href: "/admin/test-banks", label: "题库管理" },
+  { href: "/admin/exam-papers", label: "试卷管理" },
   { href: "/admin/quiz-questions", label: "试题管理" },
   { href: "/admin/users", label: "用户管理" },
   { href: "/admin/study-plans", label: "学习计划" },
