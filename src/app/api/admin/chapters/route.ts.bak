@@ -1,14 +1,14 @@
 /**
  * @description 章节管理API
  * @author 郝桃桃
- * @date 2024-06-17
+ * @date 2024-05-23
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { chapters, nursingDisciplines } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
-import { getAdminSession } from "@/lib/auth/admin-auth";
+import { withAdminAuth } from "@/lib/auth/admin-auth";
 
 // 请求验证Schema
 const chapterSchema = z.object({
@@ -18,40 +18,9 @@ const chapterSchema = z.object({
   orderIndex: z.number().int().positive("章节顺序必须是正整数"),
 });
 
-/**
- * 错误处理函数
- * @param error 错误对象
- * @param operation 操作描述
- * @returns NextResponse错误响应
- */
-function handleError(error: unknown, operation: string): NextResponse {
-  console.error(`${operation}失败:`, error);
-  
-  if (error instanceof z.ZodError) {
-    return NextResponse.json(
-      { success: false, message: "数据验证失败", errors: error.errors },
-      { status: 400 }
-    );
-  }
-  
-  return NextResponse.json(
-    { success: false, message: `${operation}失败`, error: String(error) },
-    { status: 500 }
-  );
-}
-
 // 获取所有章节，可按学科过滤
-export async function GET(req: NextRequest) {
+export const GET = withAdminAuth(async (req: NextRequest) => {
   try {
-    // 验证管理员身份
-    const admin = await getAdminSession();
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, message: '未授权，请重新登录' },
-        { status: 401 }
-      );
-    }
-    
     const { searchParams } = new URL(req.url);
     const disciplineId = searchParams.get('disciplineId');
     
@@ -119,22 +88,17 @@ export async function GET(req: NextRequest) {
       data: chaptersData,
     });
   } catch (error) {
-    return handleError(error, "获取章节");
+    console.error("获取章节失败:", error);
+    return NextResponse.json(
+      { success: false, message: "获取章节失败", error: String(error) },
+      { status: 500 }
+    );
   }
-}
+});
 
 // 创建新的章节
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (req: Request) => {
   try {
-    // 验证管理员身份
-    const admin = await getAdminSession();
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, message: '未授权，请重新登录' },
-        { status: 401 }
-      );
-    }
-    
     const body = await req.json();
     console.log("收到创建章节请求:", body);
     
@@ -222,6 +186,10 @@ export async function POST(req: Request) {
       throw validationError;
     }
   } catch (error) {
-    return handleError(error, "创建章节");
+    console.error("创建章节失败:", error);
+    return NextResponse.json(
+      { success: false, message: "创建章节失败", error: String(error) },
+      { status: 500 }
+    );
   }
-} 
+}); 

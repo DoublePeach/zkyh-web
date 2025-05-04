@@ -1,19 +1,15 @@
 /**
  * @description API route for managing a single exam paper (Read, Update, Delete)
  * @author 郝桃桃
- * @date 2024-05-27
+ * @date 2024-06-17
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { examPapers, examSubjects } from '@/db/schema/index';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-
-type RouteContext = {
-  params: Promise<{
-    id: string;
-  }>;
-};
+import { getAdminSession } from '@/lib/auth/admin-auth';
+import { getRouteParams, parseIdParam } from '@/lib/utils/route-utils';
 
 // Validation schema for updating an exam paper (similar to create, but all optional)
 const updateExamPaperSchema = z.object({
@@ -30,15 +26,24 @@ const updateExamPaperSchema = z.object({
 /**
  * @description 获取单个试卷详情
  * @param {NextRequest} request
- * @param {RouteContext} context
+ * @param {Object} context
  * @returns {NextResponse}
  */
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const params = await context.params; // Await params
-    const id = parseInt(params.id);
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+    
+    const params = await getRouteParams(context);
+    const { id, isValid } = parseIdParam(params.id);
 
-    if (isNaN(id)) {
+    if (!isValid) {
       return NextResponse.json({ success: false, error: '无效的试卷ID' }, { status: 400 });
     }
 
@@ -76,15 +81,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
 /**
  * @description 更新试卷信息
  * @param {NextRequest} request
- * @param {RouteContext} context
+ * @param {Object} context
  * @returns {NextResponse}
  */
-export async function PUT(request: NextRequest, context: RouteContext) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const params = await context.params; // Await params
-    const id = parseInt(params.id);
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+    
+    const params = await getRouteParams(context);
+    const { id, isValid } = parseIdParam(params.id);
 
-    if (isNaN(id)) {
+    if (!isValid) {
       return NextResponse.json({ success: false, error: '无效的试卷ID' }, { status: 400 });
     }
 
@@ -123,15 +137,24 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 /**
  * @description 删除试卷
  * @param {NextRequest} request
- * @param {RouteContext} context
+ * @param {Object} context
  * @returns {NextResponse}
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const params = await context.params; // Await params
-    const id = parseInt(params.id);
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+    
+    const params = await getRouteParams(context);
+    const { id, isValid } = parseIdParam(params.id);
 
-    if (isNaN(id)) {
+    if (!isValid) {
       return NextResponse.json({ success: false, error: '无效的试卷ID' }, { status: 400 });
     }
 
