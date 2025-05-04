@@ -1,14 +1,15 @@
 /**
  * @description 单个题库管理API
  * @author 郝桃桃
- * @date 2024-05-25
+ * @date 2024-06-17
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { testBanks, examSubjects, quizQuestions } from "@/db/schema";
 import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
-import { withAdminAuth } from "@/lib/auth/admin-auth";
+import { getAdminSession } from "@/lib/auth/admin-auth";
+import { getRouteParams, parseIdParam } from "@/lib/utils/route-utils";
 
 // 请求验证Schema
 const testBankSchema = z.object({
@@ -20,12 +21,21 @@ const testBankSchema = z.object({
 });
 
 // 获取单个题库
-export const GET = withAdminAuth(async (req: NextRequest, context: any, { params }: { params: { id: string } }) => {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
-    const bankId = parseInt(id);
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
     
-    if (isNaN(bankId)) {
+    const params = await getRouteParams(context);
+    const { id, isValid } = parseIdParam(params.id);
+    
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -53,7 +63,7 @@ export const GET = withAdminAuth(async (req: NextRequest, context: any, { params
       LEFT JOIN 
         quiz_questions qq ON tb.id = qq.test_bank_id
       WHERE 
-        tb.id = ${bankId}
+        tb.id = ${id}
       GROUP BY 
         tb.id, es.name
     `;
@@ -78,15 +88,24 @@ export const GET = withAdminAuth(async (req: NextRequest, context: any, { params
       { status: 500 }
     );
   }
-});
+}
 
 // 更新题库
-export const PUT = withAdminAuth(async (req: NextRequest, context: any, { params }: { params: { id: string } }) => {
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
-    const bankId = parseInt(id);
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
     
-    if (isNaN(bankId)) {
+    const params = await getRouteParams(context);
+    const { id, isValid } = parseIdParam(params.id);
+    
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -98,7 +117,7 @@ export const PUT = withAdminAuth(async (req: NextRequest, context: any, { params
 
     // 检查题库是否存在
     const existingBank = await db.query.testBanks.findFirst({
-      where: eq(testBanks.id, bankId),
+      where: eq(testBanks.id, id),
     });
 
     if (!existingBank) {
@@ -125,7 +144,7 @@ export const PUT = withAdminAuth(async (req: NextRequest, context: any, { params
       const nameExists = await db.query.testBanks.findFirst({
         where: and(
           eq(testBanks.name, validatedData.name),
-          ne(testBanks.id, bankId)
+          ne(testBanks.id, id)
         ),
       });
 
@@ -141,7 +160,7 @@ export const PUT = withAdminAuth(async (req: NextRequest, context: any, { params
     const questionCount = await db
       .select({ count: count() })
       .from(quizQuestions)
-      .where(eq(quizQuestions.testBankId, bankId))
+      .where(eq(quizQuestions.testBankId, id))
       .execute();
 
     const totalQuestions = questionCount[0]?.count || 0;
@@ -153,7 +172,7 @@ export const PUT = withAdminAuth(async (req: NextRequest, context: any, { params
         totalQuestions, // 更新为实际题目数量
         updatedAt: new Date(),
       })
-      .where(eq(testBanks.id, bankId));
+      .where(eq(testBanks.id, id));
 
     // 获取更新后的题库信息
     const query = `
@@ -176,7 +195,7 @@ export const PUT = withAdminAuth(async (req: NextRequest, context: any, { params
       LEFT JOIN 
         quiz_questions qq ON tb.id = qq.test_bank_id
       WHERE 
-        tb.id = ${bankId}
+        tb.id = ${id}
       GROUP BY 
         tb.id, es.name
     `;
@@ -201,15 +220,24 @@ export const PUT = withAdminAuth(async (req: NextRequest, context: any, { params
       { status: 500 }
     );
   }
-});
+}
 
 // 删除题库
-export const DELETE = withAdminAuth(async (req: NextRequest, context: any, { params }: { params: { id: string } }) => {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
-    const bankId = parseInt(id);
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
     
-    if (isNaN(bankId)) {
+    const params = await getRouteParams(context);
+    const { id, isValid } = parseIdParam(params.id);
+    
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -218,7 +246,7 @@ export const DELETE = withAdminAuth(async (req: NextRequest, context: any, { par
 
     // 检查题库是否存在
     const testBank = await db.query.testBanks.findFirst({
-      where: eq(testBanks.id, bankId),
+      where: eq(testBanks.id, id),
     });
 
     if (!testBank) {
@@ -232,7 +260,7 @@ export const DELETE = withAdminAuth(async (req: NextRequest, context: any, { par
     const questionCount = await db
       .select({ count: count() })
       .from(quizQuestions)
-      .where(eq(quizQuestions.testBankId, bankId))
+      .where(eq(quizQuestions.testBankId, id))
       .execute();
 
     if (questionCount[0]?.count > 0) {
@@ -243,7 +271,7 @@ export const DELETE = withAdminAuth(async (req: NextRequest, context: any, { par
     }
 
     // 删除题库
-    await db.delete(testBanks).where(eq(testBanks.id, bankId));
+    await db.delete(testBanks).where(eq(testBanks.id, id));
 
     return NextResponse.json({
       success: true,
@@ -256,4 +284,4 @@ export const DELETE = withAdminAuth(async (req: NextRequest, context: any, { par
       { status: 500 }
     );
   }
-}); 
+} 

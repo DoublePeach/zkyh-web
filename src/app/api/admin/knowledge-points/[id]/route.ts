@@ -1,7 +1,7 @@
 /**
  * @description 单个知识点管理API
  * @author 郝桃桃
- * @date 2024-05-25
+ * @date 2024-06-17
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
@@ -9,6 +9,7 @@ import { knowledgePoints, chapters, nursingDisciplines, examSubjects, quizQuesti
 import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
 import { getAdminSession } from "@/lib/auth/admin-auth";
+import { getRouteParams, parseIdParam } from "@/lib/utils/route-utils";
 
 // 请求验证Schema
 const knowledgePointSchema = z.object({
@@ -21,25 +22,6 @@ const knowledgePointSchema = z.object({
   keywords: z.array(z.string()).optional(),
   tags: z.record(z.string(), z.any()).optional(),
 });
-
-/**
- * 安全获取路由参数
- * @param context 路由上下文
- * @returns 路由参数对象
- */
-async function getRouteParams(context: { params: any }): Promise<Record<string, string>> {
-  try {
-    // 如果参数是Promise，则等待解析
-    if (context.params instanceof Promise) {
-      return await context.params;
-    }
-    // 否则直接返回
-    return context.params;
-  } catch (error) {
-    console.error("获取路由参数失败:", error);
-    return {};
-  }
-}
 
 /**
  * 错误处理函数
@@ -80,7 +62,7 @@ function handleError(error: unknown, operation: string): NextResponse {
 // 获取单个知识点
 export async function GET(
   req: NextRequest,
-  context: { params: any }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 验证管理员身份
@@ -92,12 +74,11 @@ export async function GET(
       );
     }
 
-    // 安全获取路由参数
+    // 获取路由参数
     const params = await getRouteParams(context);
-    const { id } = params;
-    const pointId = parseInt(id);
+    const { id, isValid } = parseIdParam(params.id);
     
-    if (isNaN(pointId)) {
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -126,7 +107,7 @@ export async function GET(
     .leftJoin(chapters, eq(knowledgePoints.chapterId, chapters.id))
     .leftJoin(nursingDisciplines, eq(chapters.disciplineId, nursingDisciplines.id))
     .leftJoin(examSubjects, eq(knowledgePoints.subjectId, examSubjects.id))
-    .where(eq(knowledgePoints.id, pointId))
+    .where(eq(knowledgePoints.id, id))
     .execute();
 
     if (result.length === 0) {
@@ -148,7 +129,7 @@ export async function GET(
 // 更新知识点
 export async function PUT(
   req: NextRequest,
-  context: { params: any }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 验证管理员身份
@@ -160,12 +141,11 @@ export async function PUT(
       );
     }
 
-    // 安全获取路由参数
+    // 获取路由参数
     const params = await getRouteParams(context);
-    const { id } = params;
-    const pointId = parseInt(id);
+    const { id, isValid } = parseIdParam(params.id);
     
-    if (isNaN(pointId)) {
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -177,7 +157,7 @@ export async function PUT(
 
     // 检查知识点是否存在
     const existingPoint = await db.query.knowledgePoints.findFirst({
-      where: eq(knowledgePoints.id, pointId),
+      where: eq(knowledgePoints.id, id),
     });
 
     if (!existingPoint) {
@@ -220,7 +200,7 @@ export async function PUT(
         where: and(
           eq(knowledgePoints.chapterId, validatedData.chapterId),
           eq(knowledgePoints.title, validatedData.title),
-          ne(knowledgePoints.id, pointId)
+          ne(knowledgePoints.id, id)
         ),
       });
 
@@ -238,7 +218,7 @@ export async function PUT(
         ...validatedData,
         updatedAt: new Date(),
       })
-      .where(eq(knowledgePoints.id, pointId));
+      .where(eq(knowledgePoints.id, id));
 
     // 获取更新后的知识点信息
     const result = await db.select({
@@ -262,7 +242,7 @@ export async function PUT(
     .leftJoin(chapters, eq(knowledgePoints.chapterId, chapters.id))
     .leftJoin(nursingDisciplines, eq(chapters.disciplineId, nursingDisciplines.id))
     .leftJoin(examSubjects, eq(knowledgePoints.subjectId, examSubjects.id))
-    .where(eq(knowledgePoints.id, pointId))
+    .where(eq(knowledgePoints.id, id))
     .execute();
 
     return NextResponse.json({
@@ -278,7 +258,7 @@ export async function PUT(
 // 删除知识点
 export async function DELETE(
   req: NextRequest,
-  context: { params: any }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     // 验证管理员身份
@@ -290,13 +270,11 @@ export async function DELETE(
       );
     }
 
-    // 安全获取路由参数
+    // 获取路由参数
     const params = await getRouteParams(context);
-    console.log("删除知识点, params:", params);
-    const { id } = params;
-    const pointId = parseInt(id);
+    const { id, isValid } = parseIdParam(params.id);
     
-    if (isNaN(pointId)) {
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: "无效的ID" },
         { status: 400 }
@@ -305,7 +283,7 @@ export async function DELETE(
 
     // 检查知识点是否存在
     const knowledgePoint = await db.query.knowledgePoints.findFirst({
-      where: eq(knowledgePoints.id, pointId),
+      where: eq(knowledgePoints.id, id),
     });
 
     if (!knowledgePoint) {
@@ -319,11 +297,11 @@ export async function DELETE(
     const quizQuestionCount = await db
       .select({ count: count() })
       .from(quizQuestions)
-      .where(eq(quizQuestions.knowledgePointId, pointId))
+      .where(eq(quizQuestions.knowledgePointId, id))
       .execute();
 
     if (quizQuestionCount[0]?.count > 0) {
-      console.log(`知识点 ${pointId} 下有 ${quizQuestionCount[0].count} 个试题，不能删除`);
+      console.log(`知识点 ${id} 下有 ${quizQuestionCount[0].count} 个试题，不能删除`);
       return NextResponse.json(
         { success: false, message: "该知识点关联了试题，请先删除关联的试题" },
         { status: 400 }
@@ -331,7 +309,7 @@ export async function DELETE(
     }
 
     // 删除知识点
-    await db.delete(knowledgePoints).where(eq(knowledgePoints.id, pointId));
+    await db.delete(knowledgePoints).where(eq(knowledgePoints.id, id));
 
     return NextResponse.json({
       success: true,
