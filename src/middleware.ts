@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
 
     // 如果无有效会话，重定向到登录页面
     if (!adminSession || !adminSession.value) {
-      const loginUrl = new URL('/login', request.url)
+      const loginUrl = new URL('/admin/login', request.url)
       return NextResponse.redirect(loginUrl)
     }
   }

@@ -71,10 +71,10 @@ export async function POST(req: Request) {
       cookieStore.set("admin_session", String(adminUser.id), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
-        // 2小时过期
-        maxAge: 60 * 60 * 2,
+        // 增加到8小时过期
+        maxAge: 60 * 60 * 8,
       });
       
       // 返回管理员登录成功响应，并标记身份为管理员
