@@ -5,10 +5,10 @@ export default {
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    host: 'localhost',
+    host: '124.220.178.188',
     port: 5432,
     user: 'postgres',
-    password: '',
+    password: '3333',
     database: 'zkyh_db'
   }
 } satisfies Config; 
