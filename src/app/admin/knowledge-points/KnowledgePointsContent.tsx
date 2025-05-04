@@ -205,7 +205,16 @@ export default function KnowledgePointsContent() {
         toast.success("知识点删除成功");
         setKnowledgePoints(prevPoints => prevPoints.filter(point => point.id !== id));
       } else {
-        toast.error("删除知识点失败: " + (response.error || "未知错误"));
+        // 改进错误消息显示
+        if (response.message && response.message.includes("关联了试题")) {
+          toast.error("删除失败：该知识点关联了试题，请先删除关联的试题");
+        } else if (response.message) {
+          toast.error(`删除失败: ${response.message}`);
+        } else if (response.error) {
+          toast.error(`删除失败: ${response.error}`);
+        } else {
+          toast.error("删除知识点失败：未知错误");
+        }
       }
     } catch (error: unknown) { // Type error
       console.error("删除知识点出错:", error);

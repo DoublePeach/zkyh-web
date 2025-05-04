@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { testBanks, examSubjects, quizQuestions } from "@/db/schema";
 import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
+import { withAdminAuth } from "@/lib/auth/admin-auth";
 
 // 请求验证Schema
 const testBankSchema = z.object({
@@ -19,12 +20,8 @@ const testBankSchema = z.object({
 });
 
 // 获取单个题库
-export async function GET(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export const GET = withAdminAuth(async (req: NextRequest, context: any, { params }: { params: { id: string } }) => {
   try {
-    const params = await context.params;
     const { id } = params;
     const bankId = parseInt(id);
     
@@ -81,15 +78,11 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
 // 更新题库
-export async function PUT(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export const PUT = withAdminAuth(async (req: NextRequest, context: any, { params }: { params: { id: string } }) => {
   try {
-    const params = await context.params;
     const { id } = params;
     const bankId = parseInt(id);
     
@@ -208,15 +201,11 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
+});
 
 // 删除题库
-export async function DELETE(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withAdminAuth(async (req: NextRequest, context: any, { params }: { params: { id: string } }) => {
   try {
-    const params = await context.params;
     const { id } = params;
     const bankId = parseInt(id);
     
@@ -267,4 +256,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}); 

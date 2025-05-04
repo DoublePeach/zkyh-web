@@ -104,13 +104,19 @@ export default function NewChapterPage() {
         orderIndex: data.orderIndex
       };
       
+      console.log("准备创建章节:", chapterData);
       const response = await createChapter(chapterData);
+      console.log("创建章节响应:", response);
       
       if (response.success) {
         toast.success("章节添加成功");
         router.push("/admin/chapters");
       } else {
         toast.error("添加失败: " + (response.error || response.message || "未知错误"));
+        // 显示详细错误信息
+        if (response.details) {
+          console.error("创建章节错误详情:", response.details);
+        }
       }
     } catch (error) {
       console.error("提交失败:", error);

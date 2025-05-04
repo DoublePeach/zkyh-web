@@ -14,7 +14,8 @@ import {
   deleteNursingDiscipline, 
   NursingDiscipline 
 } from "@/lib/services/nursing-discipline-service";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function NursingDisciplinesPage() {
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
@@ -46,19 +47,22 @@ export default function NursingDisciplinesPage() {
 
   // 删除护理学科
   const handleDelete = async (id: number) => {
-    if (!confirm("确定要删除此护理学科吗？此操作不可恢复，且会删除与其关联的所有章节和知识点。")) {
+    if (!confirm("确定要删除此护理学科吗？此操作不可恢复，且需要先删除与其关联的所有章节。")) {
       return;
     }
 
     setIsDeleting(true);
     try {
+      console.log(`尝试删除护理学科 ID=${id}`);
       const response = await deleteNursingDiscipline(id);
+      console.log('删除护理学科响应:', response);
+      
       if (response.success) {
         toast.success("护理学科删除成功");
         // 重新加载数据
         loadDisciplines();
       } else {
-        toast.error("删除护理学科失败: " + (response.error || "未知错误"));
+        toast.error("删除失败: " + (response.error || response.message || "未知错误"));
       }
     } catch (error) {
       console.error("删除护理学科出错:", error);
@@ -85,78 +89,52 @@ export default function NursingDisciplinesPage() {
         </Link>
       </div>
 
-      <div className="rounded-md border">
-        <table className="w-full divide-y divide-border">
-          <thead>
-            <tr className="bg-muted/50">
-              <th className="px-4 py-3 text-left text-sm font-medium">ID</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">学科名称</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">描述</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">图标</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {isLoading ? (
-              <tr>
-                <td className="px-4 py-3 text-sm" colSpan={5}>
-                  加载中...
-                </td>
-              </tr>
-            ) : disciplines.length === 0 ? (
-              <tr>
-                <td className="px-4 py-3 text-sm" colSpan={5}>
-                  暂无学科数据，请添加
-                </td>
-              </tr>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {disciplines.map((discipline) => (
-                  <Card key={discipline.id}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">
-                        {discipline.name}
-                      </CardTitle>
-                      {discipline.imageUrl && (
-                        <div className="relative h-8 w-8 text-muted-foreground">
-                          <Image 
-                            src={discipline.imageUrl} 
-                            alt={`${discipline.name} 图标`} 
-                            fill
-                            style={{objectFit:"contain"}}
-                            sizes="32px"
-                          />
-                        </div>
-                      )}
-                    </CardHeader>
-                    <div className="px-4 py-3 text-sm">
-                      {discipline.description}
-                    </div>
-                    <div className="px-4 py-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/admin/nursing-disciplines/${discipline.id}/edit`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          编辑
-                        </Link>
-                        <span className="text-gray-300">|</span>
-                        <button
-                          onClick={() => handleDelete(discipline.id)}
-                          disabled={isDeleting}
-                          className="text-red-600 hover:underline disabled:opacity-50"
-                        >
-                          删除
-                        </button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {isLoading ? (
+        <div className="text-center py-6">加载中...</div>
+      ) : disciplines.length === 0 ? (
+        <div className="text-center py-6">暂无学科数据，请添加</div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {disciplines.map((discipline) => (
+            <Card key={discipline.id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {discipline.name}
+                </CardTitle>
+                {discipline.imageUrl && (
+                  <div className="relative h-8 w-8 text-muted-foreground">
+                    <Image 
+                      src={discipline.imageUrl} 
+                      alt={`${discipline.name} 图标`} 
+                      fill
+                      style={{objectFit:"contain"}}
+                      sizes="32px"
+                    />
+                  </div>
+                )}
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm">{discipline.description}</p>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Link
+                  href={`/admin/nursing-disciplines/${discipline.id}/edit`}
+                >
+                  <Button variant="outline" size="sm">编辑</Button>
+                </Link>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={() => handleDelete(discipline.id)}
+                  disabled={isDeleting}
+                >
+                  删除
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 } 

@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { testBanks, examSubjects } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { withAdminAuth } from "@/lib/auth/admin-auth";
 
 // 请求验证Schema
 const testBankSchema = z.object({
@@ -19,7 +20,7 @@ const testBankSchema = z.object({
 });
 
 // 获取所有题库
-export async function GET(req: NextRequest) {
+export const GET = withAdminAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);
     const subjectId = searchParams.get('subjectId');
@@ -69,10 +70,10 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // 创建新的题库
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (req: Request) => {
   try {
     const body = await req.json();
     const validatedData = testBankSchema.parse(body);
@@ -134,4 +135,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-} 
+}); 

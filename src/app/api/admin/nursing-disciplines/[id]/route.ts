@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { nursingDisciplines, chapters } from "@/db/schema";
 import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
+import { getAdminSession } from "@/lib/auth/admin-auth";
 
 // 请求验证Schema
 const nursingDisciplineSchema = z.object({
@@ -15,13 +16,64 @@ const nursingDisciplineSchema = z.object({
   description: z.string().min(1, "学科描述不能为空"),
 });
 
+/**
+ * 安全获取路由参数
+ * @param context 路由上下文
+ * @returns 路由参数对象
+ */
+async function getRouteParams(context: { params: any }): Promise<Record<string, string>> {
+  try {
+    // 如果参数是Promise，则等待解析
+    if (context.params instanceof Promise) {
+      return await context.params;
+    }
+    // 否则直接返回
+    return context.params;
+  } catch (error) {
+    console.error("获取路由参数失败:", error);
+    return {};
+  }
+}
+
+/**
+ * 错误处理函数
+ * @param error 错误对象
+ * @param operation 操作描述
+ * @returns NextResponse错误响应
+ */
+function handleError(error: unknown, operation: string): NextResponse {
+  console.error(`${operation}失败:`, error);
+  
+  if (error instanceof z.ZodError) {
+    return NextResponse.json(
+      { success: false, message: "数据验证失败", errors: error.errors },
+      { status: 400 }
+    );
+  }
+  
+  return NextResponse.json(
+    { success: false, message: `${operation}失败`, error: String(error) },
+    { status: 500 }
+  );
+}
+
 // 获取单个护理学科
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
     const { id } = params;
     const disciplineId = parseInt(id);
     
@@ -59,21 +111,27 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("获取护理学科失败:", error);
-    return NextResponse.json(
-      { success: false, message: "获取护理学科失败" },
-      { status: 500 }
-    );
+    return handleError(error, "获取护理学科");
   }
 }
 
 // 更新护理学科
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
     const { id } = params;
     const disciplineId = parseInt(id);
     
@@ -145,27 +203,28 @@ export async function PUT(
       },
     });
   } catch (error) {
-    console.error("更新护理学科失败:", error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, message: "数据验证失败", errors: error.errors },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { success: false, message: "更新护理学科失败" },
-      { status: 500 }
-    );
+    return handleError(error, "更新护理学科");
   }
 }
 
 // 删除护理学科
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
+    console.log("删除护理学科, params:", params);
     const { id } = params;
     const disciplineId = parseInt(id);
     
@@ -189,11 +248,14 @@ export async function DELETE(
     }
 
     // 检查是否有关联的章节
-    const hasChapters = await db.query.chapters.findFirst({
-      where: eq(chapters.disciplineId, disciplineId),
-    });
-
-    if (hasChapters) {
+    const chapterCount = await db
+      .select({ count: count() })
+      .from(chapters)
+      .where(eq(chapters.disciplineId, disciplineId))
+      .execute();
+    
+    if (chapterCount[0]?.count > 0) {
+      console.log(`护理学科 ${disciplineId} 下有 ${chapterCount[0].count} 个章节，不能删除`);
       return NextResponse.json(
         { success: false, message: "该护理学科下有章节内容，请先删除所有关联的章节" },
         { status: 400 }
@@ -208,10 +270,6 @@ export async function DELETE(
       message: "护理学科删除成功",
     });
   } catch (error) {
-    console.error("删除护理学科失败:", error);
-    return NextResponse.json(
-      { success: false, message: "删除护理学科失败" },
-      { status: 500 }
-    );
+    return handleError(error, "删除护理学科");
   }
 } 

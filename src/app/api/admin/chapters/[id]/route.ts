@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { chapters, nursingDisciplines, knowledgePoints } from "@/db/schema";
 import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
+import { getAdminSession } from "@/lib/auth/admin-auth";
 
 // 请求验证Schema
 const chapterSchema = z.object({
@@ -16,13 +17,64 @@ const chapterSchema = z.object({
   disciplineId: z.number().int().positive("护理学科ID必须是正整数"),
 });
 
+/**
+ * 安全获取路由参数
+ * @param context 路由上下文
+ * @returns 路由参数对象
+ */
+async function getRouteParams(context: { params: any }): Promise<Record<string, string>> {
+  try {
+    // 如果参数是Promise，则等待解析
+    if (context.params instanceof Promise) {
+      return await context.params;
+    }
+    // 否则直接返回
+    return context.params;
+  } catch (error) {
+    console.error("获取路由参数失败:", error);
+    return {};
+  }
+}
+
+/**
+ * 错误处理函数
+ * @param error 错误对象
+ * @param operation 操作描述
+ * @returns NextResponse错误响应
+ */
+function handleError(error: unknown, operation: string): NextResponse {
+  console.error(`${operation}失败:`, error);
+  
+  if (error instanceof z.ZodError) {
+    return NextResponse.json(
+      { success: false, message: "数据验证失败", errors: error.errors },
+      { status: 400 }
+    );
+  }
+  
+  return NextResponse.json(
+    { success: false, message: `${operation}失败`, error: String(error) },
+    { status: 500 }
+  );
+}
+
 // 获取单个章节
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
     const { id } = params;
     const chapterId = parseInt(id);
     
@@ -66,21 +118,27 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("获取章节失败:", error);
-    return NextResponse.json(
-      { success: false, message: "获取章节失败" },
-      { status: 500 }
-    );
+    return handleError(error, "获取章节");
   }
 }
 
 // 更新章节
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
     const { id } = params;
     const chapterId = parseInt(id);
     
@@ -172,27 +230,29 @@ export async function PUT(
       },
     });
   } catch (error) {
-    console.error("更新章节失败:", error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, message: "数据验证失败", errors: error.errors },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { success: false, message: "更新章节失败" },
-      { status: 500 }
-    );
+    return handleError(error, "更新章节");
   }
 }
 
 // 删除章节
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    console.log("删除章节, context:", context);
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
+    console.log("删除章节, params:", params);
     const { id } = params;
     const chapterId = parseInt(id);
     
@@ -216,11 +276,14 @@ export async function DELETE(
     }
 
     // 检查章节是否有关联的知识点
-    const hasKnowledgePoints = await db.query.knowledgePoints.findFirst({
-      where: eq(knowledgePoints.chapterId, chapterId),
-    });
+    const knowledgePointCount = await db
+      .select({ count: count() })
+      .from(knowledgePoints)
+      .where(eq(knowledgePoints.chapterId, chapterId))
+      .execute();
 
-    if (hasKnowledgePoints) {
+    if (knowledgePointCount[0]?.count > 0) {
+      console.log(`章节 ${chapterId} 下有 ${knowledgePointCount[0].count} 个知识点，不能删除`);
       return NextResponse.json(
         { success: false, message: "章节下有知识点，请先删除所有关联的知识点" },
         { status: 400 }
@@ -235,10 +298,6 @@ export async function DELETE(
       message: "章节删除成功",
     });
   } catch (error) {
-    console.error("删除章节失败:", error);
-    return NextResponse.json(
-      { success: false, message: "删除章节失败" },
-      { status: 500 }
-    );
+    return handleError(error, "删除章节");
   }
 } 

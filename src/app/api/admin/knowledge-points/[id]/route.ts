@@ -5,9 +5,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { knowledgePoints, chapters, nursingDisciplines, examSubjects } from "@/db/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { knowledgePoints, chapters, nursingDisciplines, examSubjects, quizQuestions } from "@/db/schema";
+import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
+import { getAdminSession } from "@/lib/auth/admin-auth";
 
 // 请求验证Schema
 const knowledgePointSchema = z.object({
@@ -21,13 +22,78 @@ const knowledgePointSchema = z.object({
   tags: z.record(z.string(), z.any()).optional(),
 });
 
+/**
+ * 安全获取路由参数
+ * @param context 路由上下文
+ * @returns 路由参数对象
+ */
+async function getRouteParams(context: { params: any }): Promise<Record<string, string>> {
+  try {
+    // 如果参数是Promise，则等待解析
+    if (context.params instanceof Promise) {
+      return await context.params;
+    }
+    // 否则直接返回
+    return context.params;
+  } catch (error) {
+    console.error("获取路由参数失败:", error);
+    return {};
+  }
+}
+
+/**
+ * 错误处理函数
+ * @param error 错误对象
+ * @param operation 操作描述
+ * @returns NextResponse错误响应
+ */
+function handleError(error: unknown, operation: string): NextResponse {
+  console.error(`${operation}失败:`, error);
+  
+  if (error instanceof z.ZodError) {
+    return NextResponse.json(
+      { success: false, message: "数据验证失败", errors: error.errors },
+      { status: 400 }
+    );
+  }
+  
+  // 检查是否是外键约束错误
+  const errorString = String(error);
+  if (errorString.includes("violates foreign key constraint") && 
+      errorString.includes("quiz_questions_knowledge_point_id_knowledge_points_id_fk")) {
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: "该知识点关联了试题，请先删除关联的试题", 
+        error: "外键约束错误"
+      },
+      { status: 400 }
+    );
+  }
+  
+  return NextResponse.json(
+    { success: false, message: `${operation}失败`, error: String(error) },
+    { status: 500 }
+  );
+}
+
 // 获取单个知识点
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
     const { id } = params;
     const pointId = parseInt(id);
     
@@ -75,21 +141,27 @@ export async function GET(
       data: result[0],
     });
   } catch (error) {
-    console.error("获取知识点失败:", error);
-    return NextResponse.json(
-      { success: false, message: "获取知识点失败" },
-      { status: 500 }
-    );
+    return handleError(error, "获取知识点");
   }
 }
 
 // 更新知识点
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
     const { id } = params;
     const pointId = parseInt(id);
     
@@ -199,27 +271,28 @@ export async function PUT(
       data: result[0],
     });
   } catch (error) {
-    console.error("更新知识点失败:", error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, message: "数据验证失败", errors: error.errors },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { success: false, message: "更新知识点失败" },
-      { status: 500 }
-    );
+    return handleError(error, "更新知识点");
   }
 }
 
 // 删除知识点
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: any }
 ) {
   try {
-    const params = await context.params;
+    // 验证管理员身份
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, message: '未授权，请重新登录' },
+        { status: 401 }
+      );
+    }
+
+    // 安全获取路由参数
+    const params = await getRouteParams(context);
+    console.log("删除知识点, params:", params);
     const { id } = params;
     const pointId = parseInt(id);
     
@@ -242,6 +315,21 @@ export async function DELETE(
       );
     }
 
+    // 检查知识点是否有关联的试题
+    const quizQuestionCount = await db
+      .select({ count: count() })
+      .from(quizQuestions)
+      .where(eq(quizQuestions.knowledgePointId, pointId))
+      .execute();
+
+    if (quizQuestionCount[0]?.count > 0) {
+      console.log(`知识点 ${pointId} 下有 ${quizQuestionCount[0].count} 个试题，不能删除`);
+      return NextResponse.json(
+        { success: false, message: "该知识点关联了试题，请先删除关联的试题" },
+        { status: 400 }
+      );
+    }
+
     // 删除知识点
     await db.delete(knowledgePoints).where(eq(knowledgePoints.id, pointId));
 
@@ -250,10 +338,6 @@ export async function DELETE(
       message: "知识点删除成功",
     });
   } catch (error) {
-    console.error("删除知识点失败:", error);
-    return NextResponse.json(
-      { success: false, message: "删除知识点失败" },
-      { status: 500 }
-    );
+    return handleError(error, "删除知识点");
   }
 } 

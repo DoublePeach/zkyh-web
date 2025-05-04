@@ -16,15 +16,21 @@ const PROTECTED_ADMIN_PATHS = [
   '/admin/quiz-questions',
   '/admin/users',
   '/admin/study-plans',
+  '/admin/exam-papers'
 ]
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
+  // 登录路径不需要验证
+  if (pathname === '/admin/login') {
+    return NextResponse.next()
+  }
+  
   // 检查是否访问管理后台受保护路径
-  const isAdminPath = PROTECTED_ADMIN_PATHS.some(path => 
-    pathname.startsWith(path)
-  ) || pathname === '/admin'
+  const isAdminPath = pathname === '/admin' || 
+    pathname.startsWith('/admin/') ||
+    PROTECTED_ADMIN_PATHS.some(path => pathname.startsWith(path))
 
   // 如果是管理后台路径，检查是否有有效会话
   if (isAdminPath) {
@@ -32,6 +38,7 @@ export async function middleware(request: NextRequest) {
 
     // 如果无有效会话，重定向到登录页面
     if (!adminSession || !adminSession.value) {
+      console.log(`[AUTH] 无效会话，重定向到登录页: ${pathname}`)
       const loginUrl = new URL('/admin/login', request.url)
       return NextResponse.redirect(loginUrl)
     }
