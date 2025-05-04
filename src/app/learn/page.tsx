@@ -15,12 +15,17 @@ import { ArrowLeft, BookOpen, Calendar, Clock, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
 import { getUserStudyPlans } from '@/lib/db-client';
+// Import type inferred from schema
+import type { studyPlans } from '@/db/schema'; 
+import type { InferSelectModel } from 'drizzle-orm'; 
+
+type StudyPlan = InferSelectModel<typeof studyPlans>;
 
 export default function LearnPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [studyPlans, setStudyPlans] = useState<any[]>([]);
+  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
   
   // 加载用户的备考规划
   useEffect(() => {
@@ -46,19 +51,32 @@ export default function LearnPage() {
     fetchData();
   }, [isAuthenticated, user, router]);
   
-  // 格式化日期
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  // 格式化日期 (Handles Date or string)
+  const formatDate = (dateInput: string | Date | null | undefined) => {
+    if (!dateInput) return '-';
+    try {
+        const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+        return date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+        return String(dateInput); // Fallback
+    }
   };
   
-  // 计算距离考试天数
-  const calculateDaysUntilExam = (examDate: string) => {
-    const now = new Date();
-    const exam = new Date(examDate);
-    const diffTime = exam.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  // 计算距离考试天数 (Handles Date or string)
+  const calculateDaysUntilExam = (examDateInput: string | Date | null | undefined) => {
+    if (!examDateInput) return '-'; // Return dash if no date
+    try {
+        const now = new Date();
+        const exam = typeof examDateInput === 'string' ? new Date(examDateInput) : examDateInput;
+        // Set time to 0 to compare dates only
+        now.setHours(0, 0, 0, 0);
+        exam.setHours(0, 0, 0, 0);
+        const diffTime = exam.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 ? diffDays : 0; // Return 0 if date passed
+    } catch {
+        return 'N/A'; // Return N/A if parsing fails
+    }
   };
   
   return (

@@ -8,14 +8,16 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-interface EditChapterPageProps {
-  params: { id: string };
-}
+// Remove the separate interface
+// interface EditChapterPageProps {
+//   params: { id: string };
+// }
 
-// Make it async to handle params correctly
-export default async function EditChapterPage({ params }: EditChapterPageProps) {
-    const resolvedParams = await params;
-    const chapterId = resolvedParams.id;
+// Use inline type for props, defining params as a Promise
+export default async function EditChapterPage({ params }: { params: Promise<{ id: string }> }) {
+    // Await the params Promise to get the actual object
+    const actualParams = await params; 
+    const chapterId = actualParams.id;
 
     if (!chapterId || isNaN(parseInt(chapterId))){
          return <div>无效的章节 ID</div>;

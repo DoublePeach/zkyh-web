@@ -6,7 +6,7 @@
  * @date 2024-05-26
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod";
@@ -34,6 +34,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { getTestBank } from "@/lib/services/test-bank-service";
+import { TestBank } from "@/lib/services/test-bank-service";
 import { createQuizQuestion, QuizQuestionRequest } from "@/lib/services/quiz-question-service";
 import { toast } from "sonner";
 
@@ -80,7 +81,7 @@ type FormInputValues = z.infer<typeof formInputSchema>;
 type FormOutputValues = z.infer<typeof formOutputSchema>;
 
 export default function NewQuizQuestionClient({ id }: { id: string }) {
-  const [testBank, setTestBank] = useState<any>(null);
+  const [testBank, setTestBank] = useState<TestBank | null>(null);
   const [knowledgePoints, setKnowledgePoints] = useState<{ id: number; title: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [optionsArray, setOptionsArray] = useState<{key: string; value: string}[]>([
@@ -133,7 +134,7 @@ export default function NewQuizQuestionClient({ id }: { id: string }) {
           return;
         }
         
-        setTestBank(testBankResult.data);
+        setTestBank(testBankResult.data ?? null);
         
         // 获取知识点列表
         if (testBankResult.data?.subjectId) {
@@ -179,26 +180,31 @@ export default function NewQuizQuestionClient({ id }: { id: string }) {
   // 监听题目类型变化
   const watchQuestionType = form.watch("questionType");
 
-  // 更新选项
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name?.startsWith('option')) {
-        const [, index, field] = name.split('.'); // option.0.key 或 option.0.value
-        updateOption(parseInt(index), field as 'key' | 'value', value[name as keyof typeof value] as string);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form.watch]);
-
-  // 更新选项值
-  function updateOption(index: number, field: 'key' | 'value', value: string) {
+  // 更新选项值 (wrap in useCallback)
+  const updateOption = useCallback((index: number, field: 'key' | 'value', value: string) => {
     const updatedOptions = [...optionsArray];
     if (updatedOptions[index]) {
       updatedOptions[index][field] = value;
       setOptionsArray(updatedOptions);
       form.setValue('options', JSON.stringify(updatedOptions));
     }
-  }
+  }, [optionsArray, form]);
+
+  // 更新选项 useEffect (add updateOption to dependencies)
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name?.startsWith('option')) {
+        const [, indexStr, field] = name.split('.');
+        const index = parseInt(indexStr);
+        if (!isNaN(index)) {
+             // Ensure value is treated as string before passing
+            const val = value[name as keyof typeof value];
+            updateOption(index, field as 'key' | 'value', String(val ?? ''));
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, updateOption]); // form.watch itself might be stable, but including form is safer
 
   // 添加选项
   function addOption() {
@@ -296,10 +302,11 @@ export default function NewQuizQuestionClient({ id }: { id: string }) {
           description: result.message || "未能创建试题",
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("创建试题失败:", error);
+      const message = error instanceof Error ? error.message : "未知错误";
       toast.error("提交错误", {
-        description: "创建试题时出现错误，请稍后重试",
+        description: message || "创建试题时出现错误，请稍后重试",
       });
     } finally {
       setIsLoading(false);

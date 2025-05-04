@@ -4,6 +4,7 @@
  * @date 2024-05-25
  */
 import { apiGet, apiPost, apiPut, apiDelete } from './api-service';
+// import { ApiResponse } from './api-service'; // Unused
 
 // 知识点类型
 export interface KnowledgePoint {
@@ -19,7 +20,7 @@ export interface KnowledgePoint {
   difficulty: number;
   importance: number;
   keywords?: string[];
-  tags?: Record<string, any>;
+  tags?: Record<string, string | number | boolean | null>;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -33,7 +34,7 @@ export interface KnowledgePointRequest {
   difficulty: number;
   importance: number;
   keywords?: string[];
-  tags?: Record<string, any>;
+  tags?: Record<string, unknown> | undefined;
 }
 
 const API_BASE_URL = '/api/admin/knowledge-points';

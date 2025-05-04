@@ -8,14 +8,15 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-interface EditExamSubjectPageProps {
-  params: { id: string };
-}
+// 删除单独的接口定义
+// interface EditExamSubjectPageProps {
+//   params: { id: string };
+// }
 
-// Make it async to handle params correctly
-export default async function EditExamSubjectPage({ params }: EditExamSubjectPageProps) {
-    const resolvedParams = await params;
-    const subjectId = resolvedParams.id; // Keep as string or parse if needed by header
+// 使用内联类型，将params定义为Promise
+export default async function EditExamSubjectPage({ params }: { params: Promise<{ id: string }> }) {
+    const actualParams = await params;
+    const subjectId = actualParams.id; // Keep as string or parse if needed by header
 
     // Basic validation (can be improved)
     if (!subjectId || isNaN(parseInt(subjectId))){

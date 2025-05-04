@@ -10,9 +10,9 @@ import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 // Validation schema for updating user status
@@ -50,42 +50,47 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const dataToUpdate = { isActive: isActive, updatedAt: new Date() };
 
     // Determine user type and update
-    let updatedUser: any[] = [];
+    // Define a more specific type for the update result if possible
+    // Assuming returning() gives back the full row matching the schema
+    let updatedUser: (typeof users.$inferSelect | typeof adminUsers.$inferSelect | null) = null;
     let userType: 'admin' | 'regular' | 'not_found' = 'not_found';
 
     // Try admin users first
     const adminCheck = await db.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
     if (adminCheck.length > 0) {
-        // Prevent deactivating the last active admin or self? (Add logic if needed)
-        // For simplicity, allow deactivation for now.
-        updatedUser = await db
+        const result = await db
             .update(adminUsers)
             .set(dataToUpdate)
             .where(eq(adminUsers.id, id))
             .returning();
+        if (result.length > 0) updatedUser = result[0];
         userType = 'admin';
     } else {
         // Try regular users
         const regularCheck = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1);
         if (regularCheck.length > 0) {
-             updatedUser = await db
+             const result = await db
                 .update(users)
                 .set(dataToUpdate)
                 .where(eq(users.id, id))
                 .returning();
+             if (result.length > 0) updatedUser = result[0];
              userType = 'regular';
         }
     }
 
-    if (userType === 'not_found') {
-      return NextResponse.json({ success: false, error: '用户未找到' }, { status: 404 });
+    if (userType === 'not_found' || !updatedUser) {
+      return NextResponse.json({ success: false, error: '用户未找到或更新失败' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: { ...updatedUser[0], userType } });
+    // Add userType to the response data
+    const responseData = { ...updatedUser, userType };
+    return NextResponse.json({ success: true, data: responseData });
 
-  } catch (error) {
-     console.error(`更新用户 ${context.params.id} 失败:`, error);
-    return NextResponse.json({ success: false, error: '更新用户状态失败' }, { status: 500 });
+  } catch (error: unknown) { // Use unknown
+     console.error(`更新用户失败:`, error);
+     const message = error instanceof Error ? error.message : "未知错误";
+    return NextResponse.json({ success: false, error: '更新用户状态失败', message }, { status: 500 });
   }
 }
 

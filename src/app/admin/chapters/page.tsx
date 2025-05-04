@@ -6,7 +6,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   Select,
@@ -47,11 +47,10 @@ export default function ChaptersPage() {
     loadDisciplines();
   }, []);
 
-  // 加载章节数据
-  const loadChapters = async () => {
+  // 加载章节数据 (Wrap in useCallback)
+  const loadChapters = useCallback(async () => {
     setIsLoading(true);
     try {
-      // 如果选择了特定的学科，则按学科ID筛选
       const disciplineId = selectedDiscipline !== "all" ? parseInt(selectedDiscipline) : undefined;
       const response = await getAllChapters(disciplineId);
       
@@ -66,17 +65,17 @@ export default function ChaptersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedDiscipline]);
 
   // 当选择的学科变化时，重新加载章节数据
   useEffect(() => {
     if (!isDisciplinesLoading) {
       loadChapters();
     }
-  }, [selectedDiscipline, isDisciplinesLoading]);
+  }, [isDisciplinesLoading, loadChapters]);
 
-  // 删除章节
-  const handleDelete = async (id: number) => {
+  // 删除章节 (Wrap in useCallback)
+  const handleDelete = useCallback(async (id: number) => {
     if (!confirm("确定要删除此章节吗？此操作不可恢复，且会删除与此章节关联的所有知识点。")) {
       return;
     }
@@ -96,7 +95,7 @@ export default function ChaptersPage() {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [loadChapters]);
 
   return (
     <div className="space-y-6">

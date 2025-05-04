@@ -178,7 +178,7 @@ export default function NewKnowledgePointPage() {
     return () => { isMounted = false; };
 
   // Correct dependency: ONLY depend on the actual watched value
-  }, [watchedDisciplineId]); // Remove `form` from dependencies
+  }, [watchedDisciplineId, form]); // Ensure `form` is included
 
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);

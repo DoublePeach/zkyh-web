@@ -3,17 +3,18 @@
  * @author 郝桃桃
  * @date 2024-05-27
  */
-import { NextRequest, NextResponse } from 'next/server';
+// import { NextRequest, NextResponse } from 'next/server'; // Remove unused NextRequest
+import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { users, adminUsers } from '@/db/schema/index';
-import { desc } from 'drizzle-orm';
+import { desc, sql } from 'drizzle-orm';
 
 /**
  * @description 获取所有用户（普通用户和管理员）列表
  * @param {NextRequest} request
  * @returns {NextResponse}
  */
-export async function GET(request: NextRequest) {
+export async function GET(/* request: NextRequest */) {
   try {
     // Fetch regular users
     const regularUsers = await db.select({
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
         isActive: users.isActive,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
-        userType: 'regular' // Add type identifier
+        userType: sql`\'regular\'` .as('userType'),
       })
       .from(users)
       .orderBy(desc(users.createdAt));
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
         lastLogin: adminUsers.lastLogin,
         createdAt: adminUsers.createdAt,
         updatedAt: adminUsers.updatedAt,
-        userType: 'admin' // Add type identifier
+        userType: sql`\'admin\'` .as('userType'),
       })
       .from(adminUsers)
       .orderBy(desc(adminUsers.createdAt));

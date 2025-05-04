@@ -19,10 +19,11 @@ const examSubjectSchema = z.object({
 // 获取单个考试科目
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const subjectId = parseInt(id);
     
     if (isNaN(subjectId)) {
@@ -59,10 +60,11 @@ export async function GET(
 // 更新考试科目
 export async function PUT(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const subjectId = parseInt(id);
     
     if (isNaN(subjectId)) {
@@ -137,10 +139,11 @@ export async function PUT(
 // 删除考试科目
 export async function DELETE(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const subjectId = parseInt(id);
     
     if (isNaN(subjectId)) {

@@ -10,9 +10,9 @@ import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 // Validation schema for updating an exam paper (similar to create, but all optional)
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, data: paper[0] });
   } catch (error) {
-    console.error(`获取试卷 ${context.params.id} 失败:`, error);
+    console.error(`获取试卷失败:`, error);
     return NextResponse.json({ success: false, error: '获取试卷详情失败' }, { status: 500 });
   }
 }
@@ -114,7 +114,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, data: updatedPaper[0] });
   } catch (error) {
-     console.error(`更新试卷 ${context.params.id} 失败:`, error);
+     console.error(`更新试卷失败:`, error);
      // Add specific error handling
     return NextResponse.json({ success: false, error: '更新试卷失败' }, { status: 500 });
   }
@@ -145,7 +145,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, message: '试卷删除成功' }, { status: 200 }); // 200 or 204
   } catch (error) {
-    console.error(`删除试卷 ${context.params.id} 失败:`, error);
+    console.error(`删除试卷失败:`, error);
      // Add specific error handling (e.g., related records preventing deletion)
     return NextResponse.json({ success: false, error: '删除试卷失败' }, { status: 500 });
   }

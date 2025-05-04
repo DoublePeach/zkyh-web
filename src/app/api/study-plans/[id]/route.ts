@@ -8,9 +8,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStudyPlanDetails as dbGetStudyPlanDetails } from '@/lib/services/study-plan-service';
 
 type RouteParams = {
-  params: {
+  params: Promise<{
     id: string;
-  }
+  }>;
 };
 
 /**

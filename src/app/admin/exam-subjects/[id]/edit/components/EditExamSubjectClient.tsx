@@ -7,7 +7,6 @@
  */
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -114,9 +113,10 @@ export default function EditExamSubjectClient({ id }: EditExamSubjectClientProps
       } else {
         toast.error("更新失败: " + (response.error || response.message || "未知错误"));
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("提交失败:", error);
-      toast.error("更新失败，请重试");
+      const message = error instanceof Error ? error.message : "未知错误";
+      toast.error("更新失败，请重试", { description: message });
     } finally {
       setIsSubmitting(false);
     }

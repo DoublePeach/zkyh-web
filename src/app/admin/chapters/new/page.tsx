@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod";
@@ -87,6 +87,12 @@ export default function NewChapterPage() {
     },
   });
 
+  // 获取学科名称 (Wrap in useCallback)
+  const getDisciplineName = useCallback((id: string): string => {
+    const discipline = disciplines.find(d => d.id === parseInt(id));
+    return discipline ? discipline.name : "";
+  }, [disciplines]); // Depend on disciplines state
+
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
@@ -114,24 +120,16 @@ export default function NewChapterPage() {
     }
   }
 
-  // 获取学科名称
-  function getDisciplineName(id: string): string {
-    const discipline = disciplines.find(d => d.id === parseInt(id));
-    return discipline ? discipline.name : "";
-  }
+  // Watch disciplineId outside the effect
+  const watchedDisciplineIdForLog = form.watch("disciplineId");
 
-  // 根据选择的学科生成章节名称建议
+  // 当选择的学科变化时，可以在这里做一些事情，比如显示学科名称
   useEffect(() => {
-    const disciplineId = form.watch("disciplineId");
-    const orderIndex = form.watch("orderIndex");
-    
-    if (disciplineId && orderIndex) {
-      const disciplineName = getDisciplineName(disciplineId);
-      if (disciplineName && !form.getValues("name")) {
-        form.setValue("name", `第${orderIndex}章 ${disciplineName}基本概念和理论`);
-      }
+    if (watchedDisciplineIdForLog) {
+      console.log("Selected Discipline:", getDisciplineName(watchedDisciplineIdForLog));
     }
-  }, [form.watch("disciplineId"), form.watch("orderIndex")]);
+  // Dependencies are now simpler
+  }, [watchedDisciplineIdForLog, getDisciplineName]); 
 
   return (
     <div className="mx-auto max-w-3xl">

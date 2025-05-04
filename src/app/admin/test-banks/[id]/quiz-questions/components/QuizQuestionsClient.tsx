@@ -33,9 +33,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getTestBank } from "@/lib/services/test-bank-service";
 import { getQuizQuestionsByTestBank, deleteQuizQuestion, QuizQuestion } from "@/lib/services/quiz-question-service";
 import { toast } from "sonner";
+import { TestBank } from "@/lib/services/test-bank-service";
 
 export default function QuizQuestionsClient({ id }: { id: string }) {
-  const [testBank, setTestBank] = useState<any>(null);
+  const [testBank, setTestBank] = useState<TestBank | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [filteredQuestions, setFilteredQuestions] = useState<QuizQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +87,7 @@ export default function QuizQuestionsClient({ id }: { id: string }) {
           return;
         }
         
-        setTestBank(testBankResult.data);
+        setTestBank(testBankResult.data ?? null);
         
         // 获取题库下的试题
         const questionsResult = await getQuizQuestionsByTestBank(bankId);
@@ -98,10 +99,11 @@ export default function QuizQuestionsClient({ id }: { id: string }) {
             description: questionsResult.message,
           });
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("获取数据出错:", error);
+        const message = error instanceof Error ? error.message : "未知错误";
         toast.error("出错了", {
-          description: "获取数据时发生错误",
+          description: message || "获取数据时发生错误",
         });
       } finally {
         setIsLoading(false);
@@ -173,10 +175,11 @@ export default function QuizQuestionsClient({ id }: { id: string }) {
             description: result.message || "未能删除试题",
           });
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("删除试题失败:", error);
+        const message = error instanceof Error ? error.message : "未知错误";
         toast.error("删除出错", {
-          description: "删除试题时出现错误，请稍后重试",
+          description: message || "删除试题时出现错误，请稍后重试",
         });
       }
     }
@@ -219,14 +222,20 @@ export default function QuizQuestionsClient({ id }: { id: string }) {
   }
 
   // 格式化显示的选项
-  function formatOptions(options: any) {
+  function formatOptions(options: unknown): { key: string; value: string }[] {
     if (!options) return [];
     
     try {
       if (typeof options === 'string') {
-        return JSON.parse(options);
+        const parsed = JSON.parse(options);
+        if (Array.isArray(parsed)) {
+            return parsed as { key: string; value: string }[];
+        }
       }
-      return options;
+      if (Array.isArray(options)) {
+           return options as { key: string; value: string }[];
+      }
+      return [];
     } catch (e) {
       console.error("解析选项出错:", e);
       return [];
@@ -315,7 +324,7 @@ export default function QuizQuestionsClient({ id }: { id: string }) {
                 
                 {question.questionType !== "简答题" && question.questionType !== "案例分析题" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                    {formatOptions(question.options).map((option: any, index: number) => (
+                    {formatOptions(question.options).map((option: { key: string; value: string }, index: number) => (
                       <div 
                         key={index} 
                         className={`text-xs sm:text-sm p-2 border rounded-md ${

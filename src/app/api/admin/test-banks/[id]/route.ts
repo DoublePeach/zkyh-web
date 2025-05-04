@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { testBanks, examSubjects, quizQuestions } from "@/db/schema";
-import { eq, and, ne, count, sql } from "drizzle-orm";
+import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
 
 // 请求验证Schema
@@ -21,10 +21,11 @@ const testBankSchema = z.object({
 // 获取单个题库
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const bankId = parseInt(id);
     
     if (isNaN(bankId)) {
@@ -85,10 +86,11 @@ export async function GET(
 // 更新题库
 export async function PUT(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const bankId = parseInt(id);
     
     if (isNaN(bankId)) {
@@ -211,10 +213,11 @@ export async function PUT(
 // 删除题库
 export async function DELETE(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const bankId = parseInt(id);
     
     if (isNaN(bankId)) {

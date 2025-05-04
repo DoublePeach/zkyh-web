@@ -23,10 +23,10 @@ const createExamPaperSchema = z.object({
 
 /**
  * @description 获取试卷列表
- * @param {NextRequest} request
+ * @param {NextRequest} request // request parameter is unused
  * @returns {NextResponse}
  */
-export async function GET(request: NextRequest) {
+export async function GET(/* request: NextRequest */) { // Comment out unused parameter
   try {
     const papers = await db.select({
         id: examPapers.id,

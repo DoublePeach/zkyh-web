@@ -5,19 +5,22 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { quizQuestions, testBanks, knowledgePoints } from "@/db/schema";
-import { eq, and, SQL } from "drizzle-orm";
+import { quizQuestions, testBanks, knowledgePoints, questionTypeEnum } from "@/db/schema/index";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 // 请求验证Schema
 const quizQuestionSchema = z.object({
   testBankId: z.number().int().positive("题库ID必须是正整数"),
   knowledgePointId: z.number().int().positive("知识点ID必须是正整数").optional().nullable(),
-  questionType: z.string().min(1, "请选择题目类型"),
+  questionType: z.enum(questionTypeEnum.enumValues, {
+    required_error: "请选择题目类型",
+    invalid_type_error: "无效的题目类型"
+  }),
   content: z.string().min(1, "题目内容不能为空"),
-  options: z.any(),
+  options: z.any().optional().nullable(),
   correctAnswer: z.string().min(1, "正确答案不能为空"),
-  explanation: z.string().min(1, "题目解析不能为空"),
+  explanation: z.string().optional().nullable(),
   difficulty: z.number().int().min(1).max(5, "难度级别必须在1-5之间"),
 });
 

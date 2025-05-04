@@ -8,14 +8,15 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-interface EditNursingDisciplinePageProps {
-  params: { id: string };
-}
+// 删除单独的接口定义
+// interface EditNursingDisciplinePageProps {
+//   params: { id: string };
+// }
 
-// Make it async to handle params correctly
-export default async function EditNursingDisciplinePage({ params }: EditNursingDisciplinePageProps) {
-    const resolvedParams = await params;
-    const disciplineId = resolvedParams.id;
+// 使用内联类型，将params定义为Promise
+export default async function EditNursingDisciplinePage({ params }: { params: Promise<{ id: string }> }) {
+    const actualParams = await params;
+    const disciplineId = actualParams.id;
 
     if (!disciplineId || isNaN(parseInt(disciplineId))){
          return <div>无效的学科 ID</div>;

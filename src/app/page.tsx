@@ -9,15 +9,19 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/use-auth-store';
-import { BookOpen, BarChart, Trophy, Clock } from 'lucide-react';
+import { BookOpen, BarChart, /* Trophy, */ Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { getUserStudyPlans } from '@/lib/db-client';
+import type { studyPlans } from '@/db/schema'; 
+import type { InferSelectModel } from 'drizzle-orm'; 
+
+type StudyPlan = InferSelectModel<typeof studyPlans>;
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuthStore();
-  const [studyPlans, setStudyPlans] = useState<any[]>([]);
+  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
   const [loading, setLoading] = useState(false);
   
   // 获取用户的备考规划

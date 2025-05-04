@@ -5,9 +5,9 @@
  * @author 郝桃桃
  * @date 2024-05-27
  */
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { MoreHorizontal, ToggleLeft, ToggleRight, UserCog, User } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+// import { useRouter } from 'next/navigation'; // router is assigned but never used
+import { MoreHorizontal, /* ToggleLeft, ToggleRight, */ UserCog, User } from 'lucide-react'; // Unused icons
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -17,14 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import { Switch } from "@/components/ui/switch"; // For toggling status
@@ -79,7 +71,7 @@ export default function UsersTable() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  // const router = useRouter(); // Remove unused router instance
 
   useEffect(() => {
     setIsLoading(true);
@@ -96,7 +88,7 @@ export default function UsersTable() {
       .finally(() => setIsLoading(false));
   }, []);
 
- const handleStatusToggle = async (id: number, currentStatus: boolean) => {
+  const handleStatusToggle = useCallback(async (id: number, currentStatus: boolean) => {
     const optimisticNewStatus = !currentStatus;
     // Optimistic update
     setUsers(prevUsers => 
@@ -109,9 +101,9 @@ export default function UsersTable() {
       await updateUserStatus(id, optimisticNewStatus);
       toast.success("状态更新成功", { description: `用户 ID: ${id} 状态已更新为 ${optimisticNewStatus ? '激活' : '禁用'}` });
       // No need to setUsers again as optimistic update is already done
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error updating user status:", err);
-      toast.error("状态更新失败", { description: err.message || '更新用户状态时发生错误' });
+      toast.error("状态更新失败", { description: err instanceof Error ? err.message : '更新用户状态时发生错误' });
       // Revert optimistic update on error
        setUsers(prevUsers => 
         prevUsers.map(user => 
@@ -119,7 +111,7 @@ export default function UsersTable() {
         )
     );
     }
-  };
+  }, []);
 
   // Helper to format date
   const formatDate = (dateString: string | null | undefined) => {
@@ -171,7 +163,7 @@ export default function UsersTable() {
                     <Switch 
                         id={`status-${user.userType}-${user.id}`}
                         checked={user.isActive}
-                        onCheckedChange={(checked: boolean) => handleStatusToggle(user.id, user.isActive)}
+                        onCheckedChange={() => handleStatusToggle(user.id, user.isActive)}
                     />
                     <Label htmlFor={`status-${user.userType}-${user.id}`} className="text-xs">
                          {user.isActive ? '激活' : '禁用'}

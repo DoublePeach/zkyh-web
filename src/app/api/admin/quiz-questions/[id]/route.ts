@@ -24,10 +24,11 @@ const quizQuestionSchema = z.object({
 // 获取单个试题
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const questionId = parseInt(id);
     
     if (isNaN(questionId)) {
@@ -85,10 +86,11 @@ export async function GET(
 // 更新试题
 export async function PUT(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const questionId = parseInt(id);
     
     if (isNaN(questionId)) {
@@ -218,10 +220,11 @@ export async function PUT(
 // 删除试题
 export async function DELETE(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const questionId = parseInt(id);
     
     if (isNaN(questionId)) {

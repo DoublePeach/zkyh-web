@@ -4,11 +4,13 @@
  * @date 2024-05-24
  */
 
-interface ApiResponse<T> {
+// Define and EXPORT a generic API response structure
+export interface ApiResponse<T> {
   success: boolean;
   data?: T;
-  message?: string;
   error?: string;
+  message?: string;
+  details?: unknown; // Use unknown instead of any for details
 }
 
 /**
@@ -19,19 +21,20 @@ interface ApiResponse<T> {
 export async function apiGet<T>(url: string): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(url);
-    const data = await response.json();
-    
     if (!response.ok) {
-      throw new Error(data.message || data.error || '请求失败');
+        // Try to parse error response, default to status text
+        let errorData: Partial<ApiResponse<never>> = { error: response.statusText };
+        try {
+            errorData = await response.json();
+        } catch { /* Ignore parsing error */ }
+      console.error(`API GET Error (${response.status}): ${url}`, errorData);
+      return { success: false, error: errorData.error || response.statusText, message: errorData.message };
     }
-    
-    return data;
-  } catch (error) {
-    console.error('API请求失败:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '请求失败'
-    };
+    return await response.json() as ApiResponse<T>; // Assume successful response matches structure
+  } catch (error: unknown) {
+    console.error(`API GET Fetch Error: ${url}`, error);
+    const message = error instanceof Error ? error.message : "Network request failed";
+    return { success: false, error: message };
   }
 }
 
@@ -41,29 +44,26 @@ export async function apiGet<T>(url: string): Promise<ApiResponse<T>> {
  * @param body 请求体
  * @returns Promise<ApiResponse<T>>
  */
-export async function apiPost<T>(url: string, body: any): Promise<ApiResponse<T>> {
+export async function apiPost<T>(url: string, data: unknown): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || data.error || '请求失败');
+     if (!response.ok) {
+        let errorData: Partial<ApiResponse<never>> = { error: response.statusText };
+        try {
+            errorData = await response.json();
+        } catch { /* Ignore parsing error */ }
+        console.error(`API POST Error (${response.status}): ${url}`, errorData);
+        return { success: false, error: errorData.error || response.statusText, message: errorData.message, details: errorData.details };
     }
-    
-    return data;
-  } catch (error) {
-    console.error('API请求失败:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '请求失败'
-    };
+    return await response.json() as ApiResponse<T>;
+  } catch (error: unknown) {
+    console.error(`API POST Fetch Error: ${url}`, error);
+    const message = error instanceof Error ? error.message : "Network request failed";
+    return { success: false, error: message };
   }
 }
 
@@ -73,29 +73,26 @@ export async function apiPost<T>(url: string, body: any): Promise<ApiResponse<T>
  * @param body 请求体
  * @returns Promise<ApiResponse<T>>
  */
-export async function apiPut<T>(url: string, body: any): Promise<ApiResponse<T>> {
-  try {
+export async function apiPut<T>(url: string, data: unknown): Promise<ApiResponse<T>> {
+   try {
     const response = await fetch(url, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || data.error || '请求失败');
+     if (!response.ok) {
+        let errorData: Partial<ApiResponse<never>> = { error: response.statusText };
+        try {
+            errorData = await response.json();
+        } catch { /* Ignore parsing error */ }
+        console.error(`API PUT Error (${response.status}): ${url}`, errorData);
+        return { success: false, error: errorData.error || response.statusText, message: errorData.message, details: errorData.details };
     }
-    
-    return data;
-  } catch (error) {
-    console.error('API请求失败:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '请求失败'
-    };
+    return await response.json() as ApiResponse<T>;
+  } catch (error: unknown) {
+    console.error(`API PUT Fetch Error: ${url}`, error);
+    const message = error instanceof Error ? error.message : "Network request failed";
+    return { success: false, error: message };
   }
 }
 
@@ -105,23 +102,27 @@ export async function apiPut<T>(url: string, body: any): Promise<ApiResponse<T>>
  * @returns Promise<ApiResponse<T>>
  */
 export async function apiDelete<T>(url: string): Promise<ApiResponse<T>> {
-  try {
+   try {
     const response = await fetch(url, {
       method: 'DELETE',
     });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || data.error || '请求失败');
+    // DELETE might return 204 No Content on success with empty body
+    if (response.status === 204) {
+      return { success: true }; // Return success without data
     }
-    
-    return data;
-  } catch (error) {
-    console.error('API请求失败:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '请求失败'
-    };
+    if (!response.ok) {
+        let errorData: Partial<ApiResponse<never>> = { error: response.statusText };
+        try {
+            errorData = await response.json();
+        } catch { /* Ignore parsing error */ }
+      console.error(`API DELETE Error (${response.status}): ${url}`, errorData);
+      return { success: false, error: errorData.error || response.statusText, message: errorData.message };
+    }
+     // If response is OK but not 204, try to parse JSON
+    return await response.json() as ApiResponse<T>; 
+  } catch (error: unknown) {
+    console.error(`API DELETE Fetch Error: ${url}`, error);
+    const message = error instanceof Error ? error.message : "Network request failed";
+    return { success: false, error: message };
   }
 } 

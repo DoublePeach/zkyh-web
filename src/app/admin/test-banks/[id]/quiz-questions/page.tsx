@@ -6,9 +6,9 @@
 
 import QuizQuestionsClient from "./components/QuizQuestionsClient";
 
-// 服务器组件作为入口点，修改为 async 并 await params
-export default async function QuizQuestionsPage({ params }: { params: { id: string } }) {
+// 服务器组件作为入口点，使用 Promise 类型定义
+export default async function QuizQuestionsPage({ params }: { params: Promise<{ id: string }> }) {
   // Await params before accessing properties
-  const resolvedParams = await params;
-  return <QuizQuestionsClient id={resolvedParams.id} />;
+  const actualParams = await params;
+  return <QuizQuestionsClient id={actualParams.id} />;
 } 

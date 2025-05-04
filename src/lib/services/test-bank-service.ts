@@ -13,7 +13,7 @@ export interface TestBank {
   type: string;
   year: number | null;
   subjectId: number;
-  subjectName?: string;
+  subjectName?: string; // 考试科目名称
   totalQuestions: number;
   createdAt?: Date;
   updatedAt?: Date;

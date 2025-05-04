@@ -10,6 +10,7 @@ export interface ExamSubject {
   id: number;
   name: string;
   description: string;
+  weight: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -18,6 +19,7 @@ export interface ExamSubject {
 export interface ExamSubjectRequest {
   name: string;
   description: string;
+  weight: string;
 }
 
 const API_BASE_URL = '/api/admin/exam-subjects';

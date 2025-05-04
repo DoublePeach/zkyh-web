@@ -4,6 +4,10 @@
  * @date 2024-05-26
  */
 import { apiGet, apiPost, apiPut, apiDelete } from './api-service';
+// import { ApiResponse } from './api-service'; // Unused
+
+// Define the structure for question options
+export type QuestionOption = { key: string; value: string };
 
 // 试题类型
 export interface QuizQuestion {
@@ -13,7 +17,7 @@ export interface QuizQuestion {
   knowledgePointTitle?: string;
   questionType: string;
   content: string;
-  options: any;
+  options: QuestionOption[] | null;
   correctAnswer: string;
   explanation: string;
   difficulty: number;
@@ -27,7 +31,7 @@ export interface QuizQuestionRequest {
   knowledgePointId?: number | null;
   questionType: string;
   content: string;
-  options: any;
+  options: QuestionOption[] | null;
   correctAnswer: string;
   explanation: string;
   difficulty: number;
@@ -40,8 +44,7 @@ const API_BASE_URL = '/api/admin/quiz-questions';
  * @param testBankId 题库ID
  */
 export async function getQuizQuestionsByTestBank(testBankId: number) {
-  const url = `${API_BASE_URL}?testBankId=${testBankId}`;
-  return await apiGet<QuizQuestion[]>(url);
+  return await apiGet<QuizQuestion[]>(`${API_BASE_URL}?testBankId=${testBankId}`);
 }
 
 /**

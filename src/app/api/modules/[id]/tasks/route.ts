@@ -8,9 +8,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getModuleTasks as dbGetModuleTasks } from '@/lib/services/study-plan-service';
 
 type RouteParams = {
-  params: {
+  params: Promise<{
     id: string;
-  }
+  }>
 };
 
 /**
@@ -37,10 +37,19 @@ export async function GET(
     }
     
     console.log(`正在获取模块[${moduleId}]的任务...`);
-    const tasks = await dbGetModuleTasks(moduleId);
-    console.log(`已获取模块[${moduleId}]的任务:`, tasks.length);
+    const response = await dbGetModuleTasks(moduleId);
     
-    return NextResponse.json({ tasks }, { status: 200 });
+    if (!response.success) {
+      console.error(`获取模块[${moduleId}]的任务失败:`, response.error);
+      return NextResponse.json(
+        { error: '获取模块任务失败', message: response.error },
+        { status: 500 }
+      );
+    }
+    
+    console.log(`已获取模块[${moduleId}]的任务:`, response.data ? response.data.length : 0);
+    
+    return NextResponse.json({ tasks: response.data || [] }, { status: 200 });
   } catch (error) {
     console.error('获取模块任务API错误:', error);
     return NextResponse.json(

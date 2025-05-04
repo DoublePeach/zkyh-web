@@ -5,8 +5,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { testBanks, examSubjects, quizQuestions } from "@/db/schema";
-import { eq, and, SQL, count } from "drizzle-orm";
+import { testBanks, examSubjects } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 // 请求验证Schema

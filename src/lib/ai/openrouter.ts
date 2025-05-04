@@ -6,6 +6,13 @@
 
 import { SurveyFormData } from '@/types/survey';
 
+// Define a more specific type for the AI response structure if possible
+interface AIResponseData {
+    overview: string;
+    modules: Array<{ title: string; description: string; importance: number; difficulty: number; durationDays: number; order: number; }>;
+    tasks: Array<{ moduleIndex: number; day: number; title: string; description: string; learningContent: string; estimatedMinutes: number; }>;
+}
+
 // OpenRouter API密钥
 const OPENROUTER_API_KEY = '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';
 
@@ -16,9 +23,9 @@ const APP_NAME = 'MedCertExamPrep';
 /**
  * @description 从OpenRouter获取备考方案
  * @param {SurveyFormData} surveyData - 用户调查问卷数据
- * @returns {Promise<any>} - AI生成的备考方案
+ * @returns {Promise<AIResponseData>} - AI生成的备考方案
  */
-export async function generateStudyPlan(surveyData: SurveyFormData): Promise<any> {
+export async function generateStudyPlan(surveyData: SurveyFormData): Promise<AIResponseData> {
   try {
     console.log('开始生成备考方案...');
     
@@ -136,13 +143,6 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<any
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter API错误:', errorText);
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        errorData = { error: '无法解析错误响应' };
-      }
-      console.error('解析后的错误:', errorData);
       throw new Error(`OpenRouter API调用失败: ${response.statusText}`);
     }
     
@@ -154,40 +154,36 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<any
     // 调试日志：输出响应片段
     console.log('响应预览:', responseText.substring(0, 500) + '...');
     
-    let data;
+    // Parse the *entire* API response first
+    let apiResponseData: { choices?: { message?: { content?: string } }[] };
     try {
-      console.log('大模型返回的原始相应response：',response);
-      console.log('开始解析API响应JSON （responseText）:', responseText);
-      data = JSON.parse(responseText);
-      console.log('解析后的数据:', data);
-    } catch (e) {
-      console.error('无法解析API响应JSON:', e);
-      console.error('原始响应长度:', responseText.length);
-      throw new Error('无法解析API响应');
+      apiResponseData = JSON.parse(responseText); 
+    } catch (error: unknown) {
+      console.error('无法解析API响应JSON:', error);
+      throw new Error(`AI 请求失败: ${error instanceof Error ? error.message : String(error)}`);
     }
     
-    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
-      console.error('OpenRouter API返回了不正确的数据格式:', data);
+    // Check the expected structure of the API response
+    if (!apiResponseData.choices || !apiResponseData.choices[0] || !apiResponseData.choices[0].message || !apiResponseData.choices[0].message.content) {
+      console.error('OpenRouter API返回了不正确的数据格式:', apiResponseData);
       throw new Error('OpenRouter API返回了不正确的数据格式');
     }
     
-    // 从响应中提取内容
-    const contentText = data.choices[0].message.content;
+    // Extract the *content* string which should contain our desired JSON
+    const contentText = apiResponseData.choices[0].message.content;
     console.log('内容文本长度:', contentText.length);
     console.log('内容预览:', contentText.substring(0, 500) + '...');
     
+    // Now parse the contentText which should be the AIResponseData JSON
     try {
-      // 尝试直接解析内容
-      return tryParseJSON(contentText);
-    } catch (parseError) {
+      return parseJsonResponse(contentText); // Parse the actual content
+    } catch (parseError: unknown) {
       console.error('无法解析返回的内容:', parseError);
-      
-      // 手动实现：创建备选备考方案
       return createFallbackStudyPlan(titleLevel, daysUntilExam);
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('生成备考方案失败:', error);
-    throw error;
+    throw new Error(`AI 请求失败: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -237,79 +233,9 @@ function getHoursDescription(hours: string, type: string): string {
 }
 
 /**
- * 尝试解析JSON，带有更好的错误处理
- * @param text 要解析的JSON字符串
- */
-function tryParseJSON(text: string): any {
-  try {
-    // 先尝试直接解析
-    return JSON.parse(text);
-  } catch (e) {
-    console.log('初始解析失败，尝试清理字符串...');
-    
-    // 有时LLM会在JSON前后添加额外文本
-    // 尝试通过查找{和}对来查找JSON结构
-    let startIdx = text.indexOf('{');
-    let endIdx = text.lastIndexOf('}');
-    
-    if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
-      let jsonText = text.substring(startIdx, endIdx + 1);
-      try {
-        return JSON.parse(jsonText);
-      } catch (e2) {
-        console.error('第二次解析尝试失败');
-      }
-    }
-    
-    // 如果仍然失败，尝试更激进的方法
-    // 查找"overview"属性
-    const overviewMatch = text.match(/"overview"\s*:\s*"[^"]*"/);
-    if (overviewMatch && overviewMatch.index !== undefined) {
-      // 查找整个JSON对象
-      let bracketCount = 0;
-      let foundStart = false;
-      let start = 0;
-      let end = text.length - 1;
-      
-      // 从overview向后搜索，找到开始的大括号
-      for (let i = overviewMatch.index; i >= 0; i--) {
-        if (text[i] === '{') {
-          foundStart = true;
-          start = i;
-          break;
-        }
-      }
-      
-      // 向前搜索，找到正确的结束大括号
-      if (foundStart) {
-        for (let i = start; i < text.length; i++) {
-          if (text[i] === '{') bracketCount++;
-          if (text[i] === '}') bracketCount--;
-          if (bracketCount === 0) {
-            end = i;
-            break;
-          }
-        }
-        
-        if (bracketCount === 0) {
-          try {
-            return JSON.parse(text.substring(start, end + 1));
-          } catch (e3) {
-            console.error('第三次解析尝试失败');
-          }
-        }
-      }
-    }
-    
-    // 所有解析尝试都失败
-    throw new Error('无法解析内容: ' + e);
-  }
-}
-
-/**
  * 当解析失败时创建一个备选备考方案
  */
-function createFallbackStudyPlan(titleLevel: string, daysUntilExam: number): any {
+function createFallbackStudyPlan(titleLevel: string, daysUntilExam: number): AIResponseData {
   console.log('创建备选备考方案');
   
   // 创建一个基本的方案，包含较少的模块/任务
@@ -366,4 +292,43 @@ function getNursingModules(): Array<{title: string, description: string}> {
     { title: '内外科护理', description: '各种医疗条件下的患者护理。' },
     { title: '专科护理', description: '儿科、产科和精神科护理。' }
   ];
+}
+
+// Function to parse JSON from AI response
+function parseJsonResponse(responseText: string): AIResponseData { 
+  try {
+    // Try direct parse first
+    return JSON.parse(responseText) as AIResponseData;
+  } catch (e) {
+    console.log('初始解析失败，尝试清理字符串...');
+    // Attempt to find JSON within ```json ... ``` block
+    const startIdx = responseText.indexOf('```json');
+    const endIdx = responseText.indexOf('```', startIdx + 7);
+    if (startIdx !== -1 && endIdx !== -1) {
+      const jsonText = responseText.substring(startIdx + 7, endIdx).trim();
+      try {
+        return JSON.parse(jsonText) as AIResponseData;
+      } catch /* (e2) */ { /* Ignore inner error */ }
+    }
+
+    // Attempt to find JSON starting with { and ending with }
+    const start = responseText.indexOf('{');
+    const end = responseText.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && start < end) {
+        let balance = 0;
+        let valid = true;
+        for(let i = start; i <= end; i++){
+            if(responseText[i] === '{') balance++;
+            if(responseText[i] === '}') balance--;
+            if(balance < 0) { valid = false; break; }
+        }
+        if(valid && balance === 0){
+             try {
+                return JSON.parse(responseText.substring(start, end + 1)) as AIResponseData;
+             } catch /* (e3) */ { /* Ignore inner error */ }
+        }
+    }
+    
+    throw new Error("无法从AI响应中提取有效的JSON: " + (e instanceof Error ? e.message : String(e)));
+  }
 } 

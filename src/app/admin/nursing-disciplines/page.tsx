@@ -6,6 +6,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from 'next/image';
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { 
@@ -13,6 +14,7 @@ import {
   deleteNursingDiscipline, 
   NursingDiscipline 
 } from "@/lib/services/nursing-discipline-service";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NursingDisciplinesPage() {
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
@@ -108,50 +110,49 @@ export default function NursingDisciplinesPage() {
                 </td>
               </tr>
             ) : (
-              disciplines.map((discipline) => (
-                <tr key={discipline.id}>
-                  <td className="px-4 py-3 text-sm">{discipline.id}</td>
-                  <td className="px-4 py-3 text-sm font-medium">
-                    {discipline.name}
-                  </td>
-                  <td className="px-4 py-3 text-sm">{discipline.description}</td>
-                  <td className="px-4 py-3 text-sm">
-                    {discipline.imageUrl ? (
-                      <div className="h-8 w-8 overflow-hidden rounded-full bg-gray-100">
-                        <img
-                          src={discipline.imageUrl}
-                          alt={discipline.name}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            // 图片加载失败时显示占位符
-                            (e.target as HTMLImageElement).src = "/images/placeholder.png";
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">无图标</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/admin/nursing-disciplines/${discipline.id}/edit`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        编辑
-                      </Link>
-                      <span className="text-gray-300">|</span>
-                      <button
-                        onClick={() => handleDelete(discipline.id)}
-                        disabled={isDeleting}
-                        className="text-red-600 hover:underline disabled:opacity-50"
-                      >
-                        删除
-                      </button>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {disciplines.map((discipline) => (
+                  <Card key={discipline.id}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">
+                        {discipline.name}
+                      </CardTitle>
+                      {discipline.imageUrl && (
+                        <div className="relative h-8 w-8 text-muted-foreground">
+                          <Image 
+                            src={discipline.imageUrl} 
+                            alt={`${discipline.name} 图标`} 
+                            fill
+                            style={{objectFit:"contain"}}
+                            sizes="32px"
+                          />
+                        </div>
+                      )}
+                    </CardHeader>
+                    <div className="px-4 py-3 text-sm">
+                      {discipline.description}
                     </div>
-                  </td>
-                </tr>
-              ))
+                    <div className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/admin/nursing-disciplines/${discipline.id}/edit`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          编辑
+                        </Link>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={() => handleDelete(discipline.id)}
+                          disabled={isDeleting}
+                          className="text-red-600 hover:underline disabled:opacity-50"
+                        >
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             )}
           </tbody>
         </table>

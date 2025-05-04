@@ -8,16 +8,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-interface EditExamPaperPageProps {
-  params: { id: string };
-}
-
-// Server component - Make it async to handle params
-export default async function EditExamPaperPage({ params }: EditExamPaperPageProps) {
-  // Await params here (even though we just pass the id)
-  // This adheres to Next.js 15+ best practices
-  const resolvedParams = await params; 
-  const paperId = parseInt(resolvedParams.id);
+// 使用内联类型，将params定义为Promise
+export default async function EditExamPaperPage({ params }: { params: Promise<{ id: string }> }) {
+  // 等待params Promise获取实际对象
+  const actualParams = await params; 
+  const paperId = parseInt(actualParams.id);
 
   if (isNaN(paperId)) {
     // Handle invalid ID, maybe redirect or show an error component

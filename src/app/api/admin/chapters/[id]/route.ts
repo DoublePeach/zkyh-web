@@ -19,10 +19,11 @@ const chapterSchema = z.object({
 // 获取单个章节
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const chapterId = parseInt(id);
     
     if (isNaN(chapterId)) {
@@ -76,10 +77,11 @@ export async function GET(
 // 更新章节
 export async function PUT(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const chapterId = parseInt(id);
     
     if (isNaN(chapterId)) {
@@ -187,10 +189,11 @@ export async function PUT(
 // 删除章节
 export async function DELETE(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await context.params;
+    const params = await context.params;
+    const { id } = params;
     const chapterId = parseInt(id);
     
     if (isNaN(chapterId)) {

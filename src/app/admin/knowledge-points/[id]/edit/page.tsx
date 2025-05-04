@@ -8,14 +8,15 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-interface EditKnowledgePointPageProps {
-  params: { id: string };
-}
+// 删除单独的接口定义
+// interface EditKnowledgePointPageProps {
+//   params: { id: string };
+// }
 
-// Make it async to handle params correctly
-export default async function EditKnowledgePointPage({ params }: EditKnowledgePointPageProps) {
-    const resolvedParams = await params;
-    const knowledgePointId = resolvedParams.id;
+// 使用内联类型，将params定义为Promise
+export default async function EditKnowledgePointPage({ params }: { params: Promise<{ id: string }> }) {
+    const actualParams = await params;
+    const knowledgePointId = actualParams.id;
 
     if (!knowledgePointId || isNaN(parseInt(knowledgePointId))){
          return <div>无效的知识点 ID</div>;

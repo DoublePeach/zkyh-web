@@ -7,7 +7,7 @@
  */
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+// import Link from "next/link"; // Unused
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -166,9 +166,10 @@ export default function EditKnowledgePointClient({ id }: EditKnowledgePointClien
           keywords: keywordsString,
           tags: tagsString,
         });
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("加载数据失败:", error);
-        toast.error("加载数据失败");
+        const message = error instanceof Error ? error.message : "未知错误";
+        toast.error("加载数据失败", { description: message });
         router.push("/admin/knowledge-points");
       } finally {
         setIsLoading(false);
@@ -176,7 +177,7 @@ export default function EditKnowledgePointClient({ id }: EditKnowledgePointClien
     }
 
     loadData();
-  }, [id, router, form]); // Keep form in dependency for reset
+  }, [id, router, form.reset, form]); // Add form dependency
 
   // Based on selected discipline, fetch chapters
   const watchDisciplineId = form.watch("disciplineId");
@@ -222,7 +223,7 @@ export default function EditKnowledgePointClient({ id }: EditKnowledgePointClien
               form.setValue("chapterId", ""); // Reset chapter selection
             }
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("获取章节失败:", error);
         if(isMounted) toast.error("获取章节失败");
         if(isMounted) setChapters([]); // Clear on error
@@ -237,21 +238,21 @@ export default function EditKnowledgePointClient({ id }: EditKnowledgePointClien
 
   }, [watchDisciplineId, form]); // Depend on watched value and form
 
-  // 将JSON对象格式化为字符串
-  function formatTags(tags: Record<string, any>): string {
+  // 将JSON对象格式化为字符串 (Specify return type and handle non-string values better in map)
+  function formatTags(tags: Record<string, unknown>): string {
     if (!tags || Object.keys(tags).length === 0) return '';
     
     return Object.entries(tags)
-      .map(([key, value]) => `"${key}": ${typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}`) // Ensure values are stringified if not string
+      .map(([key, value]) => `"${key}": ${JSON.stringify(value)}`) // Always stringify value
       .join(', ');
   }
 
-  // Parse tags string back to object
-  function parseTags(tagsString: string | undefined): Record<string, any> | undefined {
+  // Parse tags string back to object (return Record<string, unknown>)
+  function parseTags(tagsString: string | undefined): Record<string, unknown> | undefined {
       if (!tagsString || tagsString.trim() === '') return undefined;
       try {
           // Need to wrap the string in {} to make it valid JSON
-          return JSON.parse(`{${tagsString}}`);
+          return JSON.parse(`{${tagsString}}`) as Record<string, unknown>; // Assert type
       } catch (e) {
           console.error("Failed to parse tags JSON string:", e);
           toast.error("标签格式错误", { description: "请输入有效的 JSON key-value 对，例如 \"type\": \"理论\""});
@@ -278,16 +279,14 @@ export default function EditKnowledgePointClient({ id }: EditKnowledgePointClien
 
       // 格式化数据
       const formattedData: KnowledgePointRequest = {
-        // disciplineId is derived from chapterId on the backend, not sent directly?
-        // Check if your service/API expects disciplineId
         chapterId: parseInt(data.chapterId),
         subjectId: parseInt(data.subjectId),
         title: data.title,
         content: data.content,
-        difficulty: data.difficulty, // Already number due to coerce
-        importance: data.importance, // Already number due to coerce
-        keywords: data.keywords ? data.keywords.split(',').map(k => k.trim()).filter(k => k !== '') : [], // Ensure empty strings are filtered
-        tags: parsedTags, // Use parsed object
+        difficulty: data.difficulty, 
+        importance: data.importance, 
+        keywords: data.keywords ? data.keywords.split(',').map(k => k.trim()).filter(k => k !== '') : [], 
+        tags: parsedTags, // No need to cast now
       };
       
       const response = await updateKnowledgePoint(knowledgePointId, formattedData);
@@ -299,9 +298,10 @@ export default function EditKnowledgePointClient({ id }: EditKnowledgePointClien
       } else {
         toast.error("更新失败: " + (response.error || response.message || "未知错误"));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("提交失败:", error);
-      toast.error("更新失败，请重试", { description: error.message });
+      const message = error instanceof Error ? error.message : "未知错误";
+      toast.error("更新失败，请重试", { description: message });
     } finally {
       setIsSubmitting(false);
     }

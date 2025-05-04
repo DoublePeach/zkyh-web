@@ -58,6 +58,7 @@ export const examSubjects = pgTable('exam_subjects', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
+  weight: varchar('weight', { length: 10 }), // 新增：考试权重，例如 "45%"
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -72,7 +73,7 @@ export const knowledgePoints = pgTable('knowledge_points', {
   difficulty: integer('difficulty').default(3).notNull(), // 难度 (1-5)
   importance: integer('importance').default(3).notNull(), // 重要度 (1-5)
   keywords: jsonb('keywords').$type<string[]>(),
-  tags: jsonb('tags').$type<Record<string, any>>(),
+  tags: jsonb('tags').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

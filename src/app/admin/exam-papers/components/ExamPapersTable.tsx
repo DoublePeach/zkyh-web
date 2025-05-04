@@ -97,9 +97,10 @@ export default function ExamPapersTable() {
       await deleteExamPaper(id);
       setPapers(prevPapers => prevPapers.filter(p => p.id !== id));
       toast.success("删除成功", { description: `试卷 ID: ${id} 已被删除` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error deleting exam paper:", err);
-      toast.error("删除失败", { description: err.message || '删除试卷时发生错误' });
+      const message = err instanceof Error ? err.message : "未知错误";
+      toast.error("删除失败", { description: message });
     }
   };
 

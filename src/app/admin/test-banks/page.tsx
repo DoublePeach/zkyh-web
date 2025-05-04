@@ -31,7 +31,6 @@ export default function TestBanksPage() {
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // 题库类型
   const bankTypes = [
@@ -72,7 +71,6 @@ export default function TestBanksPage() {
     async function fetchTestBanks() {
       // Always set loading to true when fetching
       setIsLoading(true); 
-      setError(null); // Clear previous errors
       
       try {
         // Build API URL conditionally
@@ -105,17 +103,16 @@ export default function TestBanksPage() {
                 description: result.message || '未知错误',
               });
               setTestBanks([]); // Clear data on error
-              setError(result.message || '获取题库失败');
             }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("获取题库出错:", error);
          if (isMounted) {
+            const message = error instanceof Error ? error.message : "未知错误";
             toast.error("出错了", {
-              description: error.message || "获取题库时发生错误",
+              description: message || "获取题库时发生错误",
             });
             setTestBanks([]); // Clear data on error
-            setError(error.message || '获取题库时发生错误');
          }
       } finally {
          if (isMounted) {

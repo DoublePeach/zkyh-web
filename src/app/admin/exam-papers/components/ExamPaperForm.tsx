@@ -7,11 +7,13 @@
  */
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+// import Link from 'next/link'; // Unused
 import { z } from 'zod';
-import { useForm, Controller } from 'react-hook-form';
+// import { useForm, Controller } from 'react-hook-form'; // Controller unused
+import { useForm } from 'react-hook-form'; 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Check, ChevronsUpDown, PlusCircle, X } from 'lucide-react';
+// import { ArrowLeft, Check, ChevronsUpDown, PlusCircle, X } from 'lucide-react'; // Unused
+import { Check, PlusCircle, X } from 'lucide-react'; 
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,16 +32,17 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription
+  // FormDescription // Unused
 } from "@/components/ui/form";
 import { toast } from "sonner";
-import { ExamSubject } from '@/lib/services/exam-subject-service'; // Assuming type exists
-import { QuizQuestion } from '@/lib/services/quiz-question-service'; // Assuming type exists
+// import { ExamSubject } from '@/lib/services/exam-subject-service'; // Unused
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Badge } from "@/components/ui/badge";
+// import { Badge } from "@/components/ui/badge"; // Unused
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { QuizQuestion } from '@/lib/services/quiz-question-service';
+import { TestBank } from '@/lib/services/test-bank-service'; // Import TestBank type
 
 // Validation schema
 const formSchema = z.object({
@@ -55,9 +58,25 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+// Define a specific type for the detailed exam paper data fetched from API
+interface ExamPaperDetail extends Partial<TestBank> { // Inherits fields from TestBank
+    // Fields added by the API route (GET [id])
+    title?: string; 
+    subjectId?: number;
+    duration?: number | null;
+    totalScore?: number | null;
+    passingScore?: number | null;
+    questionIds?: number[];
+    status?: 'draft' | 'published' | 'archived' | null;
+    // 移除subjectName因为已经从TestBank继承了
+    // Include other fields returned by API if necessary
+}
+
+// Define props for the form component
 interface ExamPaperFormProps {
-  paperId?: number; // Optional: If provided, we are in edit mode
-  initialData?: any; // Optional: Pre-filled data for editing
+  paperId?: number; 
+  // Use the new interface for initial data
+  initialData?: ExamPaperDetail | null; 
 }
 
 // Mock data/types - replace with actual API calls and types
@@ -80,24 +99,27 @@ async function fetchSubjects(): Promise<SubjectOption[]> {
 }
 
 async function fetchQuestionsBySubject(subjectId: number): Promise<QuestionOption[]> {
-    // TODO: Implement an API endpoint for this or fetch all and filter?
-    // This might require fetching questions from test banks related to the subject.
-    // For now, returning mock data.
-    console.warn("fetchQuestionsBySubject needs implementation. Fetching all questions for now.");
-    const res = await fetch(`/api/admin/quiz-questions?subjectId=${subjectId}`); // Placeholder API
+    console.warn("fetchQuestionsBySubject needs implementation or refinement.");
+    // Ideally, fetch only necessary fields or define a specific return type
+    const res = await fetch(`/api/admin/quiz-questions?subjectId=${subjectId}`); 
     if (!res.ok) throw new Error('Failed to fetch questions');
     const result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Failed to fetch questions');
-    return (result.data || []).map((q: any) => ({ id: q.id, content: q.content.substring(0, 100) + '...', questionType: q.questionType })); // Simplify content
-
+    if (!result.success || !Array.isArray(result.data)) throw new Error(result.error || 'Failed to fetch questions or invalid data format');
+    // Map to QuestionOption, handle potential missing fields gracefully
+    return (result.data as Partial<QuizQuestion>[]).map((q) => ({ 
+        id: q.id ?? 0, // Provide default if id might be missing
+        content: (q.content ?? 'N/A').substring(0, 100) + '...', 
+        questionType: q.questionType ?? 'Unknown' 
+    })); 
 }
 
-async function fetchExamPaperDetail(id: number): Promise<any> {
+async function fetchExamPaperDetail(id: number): Promise<ExamPaperDetail | null> {
     const res = await fetch(`/api/admin/exam-papers/${id}`);
     if (!res.ok) throw new Error('Failed to fetch paper details');
     const result = await res.json();
     if (!result.success) throw new Error(result.error || 'Failed to fetch paper details');
-    return result.data;
+    // API now returns the specific structure
+    return result.data || null; 
 }
 
 export default function ExamPaperForm({ paperId }: ExamPaperFormProps) {
@@ -136,27 +158,33 @@ export default function ExamPaperForm({ paperId }: ExamPaperFormProps) {
         setSubjects(subjectData);
 
         if (isEditMode && paperId) {
-          const paperData = await fetchExamPaperDetail(paperId);
-          form.reset({
-            title: paperData.title || '',
-            description: paperData.description || '',
-            subjectId: paperData.subjectId?.toString() || '',
-            duration: paperData.duration || undefined,
-            totalScore: paperData.totalScore || undefined,
-            passingScore: paperData.passingScore || undefined,
-            status: paperData.status || 'draft',
-          });
-          // Fetch and set initial selected questions
-          if (paperData.subjectId && paperData.questionIds && paperData.questionIds.length > 0) {
-             const questions = await fetchQuestionsBySubject(paperData.subjectId);
-             setAvailableQuestions(questions);
-             const initialSelected = questions.filter(q => paperData.questionIds.includes(q.id));
-             setSelectedQuestions(initialSelected);
+          const paperData: ExamPaperDetail | null = await fetchExamPaperDetail(paperId);
+          if (paperData) { 
+              form.reset({
+                title: paperData.title ?? '', 
+                description: paperData.description ?? '',
+                subjectId: paperData.subjectId?.toString() ?? '',
+                duration: paperData.duration ?? undefined,
+                totalScore: paperData.totalScore ?? undefined,
+                passingScore: paperData.passingScore ?? undefined,
+                status: paperData.status ?? 'draft',
+              });
+              // Fetch and set initial selected questions
+              if (paperData.subjectId && paperData.questionIds && paperData.questionIds.length > 0) {
+                 const questions = await fetchQuestionsBySubject(paperData.subjectId);
+                 setAvailableQuestions(questions);
+                 const initialSelected = questions.filter(q => paperData.questionIds?.includes(q.id)); // Optional chaining for questionIds
+                 setSelectedQuestions(initialSelected);
+              }
+          } else {
+              toast.error("无法加载试卷详情", { description: `ID: ${paperId} 的试卷未找到或加载失败。` });
+              router.push('/admin/exam-papers'); // Redirect if paper not found
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to load initial data:", error);
-        toast.error("加载初始数据失败", { description: error.message });
+        const message = error instanceof Error ? error.message : "未知错误";
+        toast.error("加载初始数据失败", { description: message });
         // Optionally redirect if loading fails significantly
         // router.push('/admin/exam-papers');
       } finally {
@@ -252,9 +280,10 @@ export default function ExamPaperForm({ paperId }: ExamPaperFormProps) {
       router.push("/admin/exam-papers"); // Redirect to list page
        router.refresh(); // Refresh server components on the list page
 
-    } catch (error: any) {
+    } catch (error: unknown) { // Use unknown for error
       console.error("Failed to submit exam paper:", error);
-      toast.error(isEditMode ? "更新失败" : "创建失败", { description: error.message });
+      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      toast.error(isEditMode ? "更新失败" : "创建失败", { description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -402,7 +431,7 @@ export default function ExamPaperForm({ paperId }: ExamPaperFormProps) {
          {/* Question Selection Section */}
          <div className="space-y-4 p-6 border rounded-lg">
              <h2 className="text-lg font-semibold mb-2">试题选择</h2>
-             <p className="text-sm text-muted-foreground mb-4">请先选择"所属科目"，然后添加试题到试卷中。</p>
+             <p className="text-sm text-muted-foreground mb-4">请先选择&quot;所属科目&quot;，然后添加试题到试卷中。</p>
 
             <Popover open={isQuestionPopoverOpen} onOpenChange={setIsQuestionPopoverOpen}>
                 <PopoverTrigger asChild>

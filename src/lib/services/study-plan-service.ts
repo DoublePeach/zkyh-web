@@ -8,9 +8,21 @@ import { db } from "@/db";
 import { studyPlans } from "@/db/schema/studyPlans";
 import { studyModules } from "@/db/schema/studyModules";
 import { dailyTasks } from "@/db/schema/dailyTasks";
-import { SurveyFormData, StudyPlanGenerated, DailyTaskGenerated } from "@/types/survey";
+import { SurveyFormData, DailyTaskGenerated } from "@/types/survey";
 import { generateStudyPlan } from "@/lib/ai/openrouter";
 import { eq } from "drizzle-orm";
+import { ApiResponse } from './api-service';
+import type { InferSelectModel } from 'drizzle-orm';
+
+type StudyPlan = InferSelectModel<typeof studyPlans>;
+type StudyModule = InferSelectModel<typeof studyModules>;
+type DailyTask = InferSelectModel<typeof dailyTasks>;
+
+interface PlanDetailsData {
+    plan: StudyPlan;
+    modules: StudyModule[];
+    tasks: DailyTask[]; 
+}
 
 /**
  * @description 创建用户的备考规划
@@ -53,19 +65,19 @@ export async function createStudyPlan(userId: number | string, formData: SurveyF
     }).returning({ id: studyPlans.id });
     
     // 6. 保存学习模块
-    for (const module of planData.modules) {
+    for (const studyModule of planData.modules) {
       const [moduleRecord] = await db.insert(studyModules).values({
         planId: plan.id,
-        title: module.title,
-        description: module.description,
-        order: module.order,
-        durationDays: module.durationDays,
-        importance: module.importance,
-        difficulty: module.difficulty,
+        title: studyModule.title,
+        description: studyModule.description,
+        order: studyModule.order,
+        durationDays: studyModule.durationDays,
+        importance: studyModule.importance,
+        difficulty: studyModule.difficulty,
       }).returning({ id: studyModules.id });
       
       // 7. 为这个模块保存每日任务
-      const moduleTasks = planData.tasks.filter((task: DailyTaskGenerated) => task.moduleIndex === module.order - 1);
+      const moduleTasks = planData.tasks.filter((task: DailyTaskGenerated) => task.moduleIndex === studyModule.order - 1);
       
       for (const task of moduleTasks) {
         await db.insert(dailyTasks).values({
@@ -90,38 +102,36 @@ export async function createStudyPlan(userId: number | string, formData: SurveyF
 /**
  * @description 获取用户的备考规划列表
  * @param {number|string} userId - 用户ID
- * @returns {Promise<any[]>} - 返回备考规划列表
+ * @returns {Promise<ApiResponse<StudyPlan[]>>}
  */
-export async function getUserStudyPlans(userId: number | string): Promise<any[]> {
+export async function getUserStudyPlans(userId: number | string): Promise<ApiResponse<StudyPlan[]>> {
   try {
-    // 确保userId是数字类型
     const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
-    
-    return await db.select()
+    const data = await db.select()
       .from(studyPlans)
       .where(eq(studyPlans.userId, userIdNum))
       .orderBy(studyPlans.createdAt);
-  } catch (error) {
+    return { success: true, data };
+  } catch (error: unknown) {
     console.error('获取备考规划列表失败:', error);
-    throw error;
+    return { success: false, error: error instanceof Error ? error.message : "未知错误" };
   }
 }
 
 /**
  * @description 获取备考规划的详细信息
  * @param {number|string} planId - 备考规划ID
- * @returns {Promise<any>} - 返回备考规划详情
+ * @returns {Promise<ApiResponse<PlanDetailsData>>}
  */
-export async function getStudyPlanDetails(planId: number | string): Promise<any> {
+export async function getStudyPlanDetails(planId: number | string): Promise<ApiResponse<PlanDetailsData>> {
   try {
-    // 确保planId是数字类型
     const planIdNum = typeof planId === 'string' ? parseInt(planId, 10) : planId;
     
     // 1. 获取备考规划基本信息
     const plan = await db.select().from(studyPlans).where(eq(studyPlans.id, planIdNum)).limit(1);
     
     if (!plan || plan.length === 0) {
-      throw new Error('备考规划不存在');
+      return { success: false, error: '备考规划不存在' };
     }
     
     // 2. 获取所有学习模块
@@ -139,63 +149,59 @@ export async function getStudyPlanDetails(planId: number | string): Promise<any>
         ).orderBy(dailyTasks.day)
       : [];
     
-    return {
-      plan: plan[0],
-      modules,
-      tasks
-    };
-  } catch (error) {
+    return { success: true, data: { plan: plan[0], modules, tasks } };
+  } catch (error: unknown) {
     console.error('获取备考规划详情失败:', error);
-    throw error;
+    return { success: false, error: error instanceof Error ? error.message : "未知错误" };
   }
 }
 
 /**
  * @description 获取模块的每日任务
  * @param {number|string} moduleId - 模块ID
- * @returns {Promise<any[]>} - 返回模块的每日任务
+ * @returns {Promise<ApiResponse<DailyTask[]>>}
  */
-export async function getModuleTasks(moduleId: number | string): Promise<any[]> {
+export async function getModuleTasks(moduleId: number | string): Promise<ApiResponse<DailyTask[]>> {
   try {
-    // 确保moduleId是数字类型
     const moduleIdNum = typeof moduleId === 'string' ? parseInt(moduleId, 10) : moduleId;
-    
-    return await db.select()
+    const data = await db.select()
       .from(dailyTasks)
       .where(eq(dailyTasks.moduleId, moduleIdNum))
       .orderBy(dailyTasks.day);
-  } catch (error) {
+     return { success: true, data };
+  } catch (error: unknown) {
     console.error('获取模块任务失败:', error);
-    throw error;
+    return { success: false, error: error instanceof Error ? error.message : "未知错误" };
   }
 }
 
+// Comment out unused helper functions if they are truly not needed elsewhere
 /**
  * @description 获取专业名称
  * @param {string} profession - 专业代码
  * @returns {string} - 专业名称
  */
-function getProfessionName(profession: string): string {
-  const map: Record<string, string> = {
-    'medical': '医疗类',
-    'nursing': '护理类',
-    'pharmacy': '药技类'
-  };
-  return map[profession] || '未知专业';
-}
+// function getProfessionName(profession: string): string {
+//   const map: Record<string, string> = {
+//     'medical': '医疗类',
+//     'nursing': '护理类',
+//     'pharmacy': '药技类'
+//   };
+//   return map[profession] || '未知专业';
+// }
 
 /**
  * @description 获取职称名称
  * @param {string} title - 职称代码
  * @returns {string} - 职称名称
  */
-function getTitleName(title: string): string {
-  const map: Record<string, string> = {
-    'none': '无职称',
-    'junior': '初级职称',
-    'mid': '中级职称',
-    'associate': '副高级',
-    'senior': '正高级'
-  };
-  return map[title] || '未知职称';
-} 
+// function getTitleName(title: string): string {
+//   const map: Record<string, string> = {
+//     'none': '无职称',
+//     'junior': '初级职称',
+//     'mid': '中级职称',
+//     'associate': '副高级',
+//     'senior': '正高级'
+//   };
+//   return map[title] || '未知职称';
+// } 

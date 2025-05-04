@@ -20,19 +20,23 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, password } = body;
+    const { username, password, profession, currentTitle, targetTitle } = body;
 
-    if (!name || !email || !password) {
+    if (!username || !password || !profession || !currentTitle || !targetTitle) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
+    // 创建用户时所需的最小字段
     const newUser = await db.insert(users).values({
-      name,
-      email,
-      password, // 注意：实际应用中应该对密码进行哈希处理
+      username,
+      passwordHash: password, // 注意：实际应用中应该对密码进行哈希处理
+      profession,
+      currentTitle,
+      targetTitle,
+      // 可选字段将使用默认值
     }).returning();
 
     return NextResponse.json(newUser[0], { status: 201 });
