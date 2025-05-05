@@ -9,8 +9,8 @@ import postgres from 'postgres';
 import { schema } from './schema';
 
 // 数据库连接字符串
-// const connectionString = process.env.DATABASE_URL || 'postgres://postgres:@localhost:5432/zkyh_db';
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:3333@124.220.178.188:5432/zkyh_db';
+const connectionString = process.env.DATABASE_URL || 'postgres://postgres:@localhost:5432/zkyh_db1';
+// const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:3333@124.220.178.188:5432/zkyh_db';
 
 // 创建数据库客户端 - 用于查询
 const queryClient = postgres(connectionString);

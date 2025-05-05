@@ -10,7 +10,7 @@ import { studyModules } from "@/db/schema/studyModules";
 import { dailyTasks } from "@/db/schema/dailyTasks";
 import { SurveyFormData } from "@/types/survey";
 import { generateStudyPlan } from "@/lib/ai/openrouter";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { ApiResponse } from './api-service';
 import type { InferSelectModel } from 'drizzle-orm';
 
@@ -205,12 +205,39 @@ export async function deleteStudyPlan(planId: number | string): Promise<ApiRespo
       return { success: false, error: '备考规划不存在' };
     }
     
-    // 执行删除操作
-    await db.delete(studyPlans)
-      .where(eq(studyPlans.id, planIdNum));
-    
-    console.log('备考规划删除成功，ID:', planId);
-    return { success: true, data: true };
+    // 使用事务进行级联删除
+    return await db.transaction(async (tx) => {
+      try {
+        // 1. 先查询关联的模块IDs
+        const modules = await tx.select({ id: studyModules.id })
+          .from(studyModules)
+          .where(eq(studyModules.planId, planIdNum));
+        
+        const moduleIds = modules.map(m => m.id);
+        
+        // 2. 如果有关联模块，删除它们的每日任务
+        if (moduleIds.length > 0) {
+          await tx.delete(dailyTasks)
+            .where(inArray(dailyTasks.moduleId, moduleIds));
+          console.log(`已删除规划(ID: ${planId})关联模块的每日任务`);
+        }
+        
+        // 3. 删除学习模块
+        await tx.delete(studyModules)
+          .where(eq(studyModules.planId, planIdNum));
+        console.log(`已删除规划(ID: ${planId})的关联学习模块`);
+        
+        // 4. 最后删除备考规划本身
+        await tx.delete(studyPlans)
+          .where(eq(studyPlans.id, planIdNum));
+        
+        console.log('备考规划删除成功，ID:', planId);
+        return { success: true, data: true };
+      } catch (error) {
+        console.error('事务内删除操作失败:', error);
+        throw error; // 抛出错误使事务回滚
+      }
+    });
   } catch (error: unknown) {
     console.error('删除备考规划失败:', error);
     return { success: false, error: error instanceof Error ? error.message : "未知错误" };

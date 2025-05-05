@@ -39,7 +39,8 @@ interface AIResponseData {
 const OPENROUTER_API_KEY = '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';
 
 // 应用信息
-const APP_URL = 'https://medical-cert-exam-prep.vercel.app';
+// const APP_URL = 'https://medical-cert-exam-prep.vercel.app';
+const APP_URL = 'http://localhost:3000';
 const APP_NAME = 'MedCertExamPrep';
 
 /**
