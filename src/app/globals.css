@@ -176,3 +176,10 @@ body {
     -ms-overflow-style: none;
   }
 }
+
+@layer utilities {
+  .text-2xs {
+    font-size: 0.7rem;
+    line-height: 1rem;
+  }
+}

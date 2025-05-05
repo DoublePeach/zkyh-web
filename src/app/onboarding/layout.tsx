@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "智考引航 - 开始您的学习之旅",

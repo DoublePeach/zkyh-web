@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import OnboardingSlide from './OnboardingSlide';
 import OnboardingPage1 from './pages/OnboardingPage1';
 import OnboardingPage2 from './pages/OnboardingPage2';
 import OnboardingPage3 from './pages/OnboardingPage3';
@@ -125,17 +124,17 @@ export default function Onboarding() {
   const renderPage = () => {
     switch (currentPage) {
       case 0:
-        return <OnboardingPage1 onNext={handleNextPage} key="page1" />;
+        return <OnboardingPage1 key="page1" />;
       case 1:
-        return <OnboardingPage2 onNext={handleNextPage} key="page2" />;
+        return <OnboardingPage2 key="page2" />;
       case 2:
-        return <OnboardingPage3 onNext={handleNextPage} key="page3" />;
+        return <OnboardingPage3 key="page3" />;
       case 3:
-        return <OnboardingPage4 onNext={handleNextPage} key="page4" />;
+        return <OnboardingPage4 key="page4" />;
       case 4:
-        return <OnboardingPage5 onComplete={completeOnboarding} key="page5" />;
+        return <OnboardingPage5 key="page5" />;
       default:
-        return <OnboardingPage1 onNext={handleNextPage} key="page1" />;
+        return <OnboardingPage1 key="page1" />;
     }
   };
 
