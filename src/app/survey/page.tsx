@@ -21,9 +21,14 @@ export default function SurveyPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
-  // 获取当前年份和未来5年的年份列表
+  // 获取当前年份和未来年份列表
   const currentYear = new Date().getFullYear();
-  const futureYears = Array.from({ length: 5 }, (_, i) => (currentYear + i).toString());
+  const currentDate = new Date();
+  const examDateThisYear = new Date(currentYear, 3, 13); // 4月13日，月份从0开始计数
+  
+  // 检查当前日期是否已过今年的考试日期
+  const startYear = currentDate > examDateThisYear ? currentYear + 1 : currentYear;
+  const futureYears = Array.from({ length: 5 }, (_, i) => (startYear + i).toString());
   
   // 表单数据
   const [formData, setFormData] = useState<SurveyFormData>({
@@ -31,7 +36,7 @@ export default function SurveyPage() {
     titleLevel: 'junior', // 初级护师、主管护师、其他
     otherTitleLevel: '', // 若选择"其他"则填写
     examStatus: 'first', // 首次参加考试、已通过部分科目
-    examYear: currentYear.toString(), // 考试年份，默认为当前年份
+    examYear: startYear.toString(), // 考试年份，默认为可选的第一年
     
     // 考试科目选择（若已通过部分科目才需填写）
     subjects: {
@@ -139,7 +144,26 @@ export default function SurveyPage() {
       toast.success('备考规划生成成功！');
     } catch (error) {
       console.error('生成备考规划失败:', error);
-      toast.error('生成备考规划失败，请稍后重试');
+      
+      // 为不同类型的错误提供更具体的反馈
+      if (error instanceof Error && error.message.includes('Internal Server Error')) {
+        toast.error('服务器连接超时，请稍后重试，系统将使用备用方案继续为您生成规划');
+        
+        // 再次尝试创建规划，通常会使用备用方案
+        try {
+          setTimeout(async () => {
+            const planId = await createStudyPlan(user.id, formData);
+            router.push(`/study-plan/${planId}`);
+            toast.success('已使用备用方案生成备考规划');
+          }, 2000);
+          return;
+        } catch (retryError) {
+          console.error('备用方案生成失败:', retryError);
+          toast.error('无法生成备考规划，请稍后重试');
+        }
+      } else {
+        toast.error('生成备考规划失败，请稍后重试');
+      }
     } finally {
       setLoading(false);
     }
@@ -158,9 +182,13 @@ export default function SurveyPage() {
   // 计算距离考试的天数
   const getDaysUntilExam = () => {
     const examYear = parseInt(formData.examYear);
+    // 创建考试日期对象 - 每年4月13日
     const examDate = new Date(examYear, 3, 13); // 4月13日，月份从0开始
     const today = new Date();
-    return Math.max(1, Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+    
+    // 计算天数差值并确保至少为1天
+    const daysDiff = Math.max(1, Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+    return daysDiff;
   };
   
   return (

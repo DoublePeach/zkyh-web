@@ -25,7 +25,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function LoginForm() {
+interface LoginFormProps {
+  onLoginSuccess?: () => void;
+}
+
+export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
@@ -64,7 +68,13 @@ export function LoginForm() {
         // 普通用户登录
         setUser(result.user);
         toast.success('登录成功');
-        router.push('/');
+        
+        // 调用登录成功回调
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        } else {
+          router.push('/');
+        }
       }
     } catch (error) {
       console.error('登录错误:', error);

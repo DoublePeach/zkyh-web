@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { getUserStudyPlans } from '@/lib/db-client';
 import type { studyPlans } from '@/db/schema'; 
 import type { InferSelectModel } from 'drizzle-orm'; 
+import { LoginModal } from '@/components/forms/login-modal';
 
 type StudyPlan = InferSelectModel<typeof studyPlans>;
 
@@ -64,6 +65,17 @@ export default function HomePage() {
             <h1 className="text-xl font-bold text-gray-900">医卫职称备考助手</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* 添加登录/用户信息 */}
+            {isAuthenticated ? (
+              <Link href="/profile" className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-2">
+                <span className="hidden sm:inline">{user?.username}</span>
+                <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+                  {user?.username?.[0].toUpperCase() || 'U'}
+                </div>
+              </Link>
+            ) : (
+              <LoginModal />
+            )}
             <button className="p-2 text-gray-600">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>

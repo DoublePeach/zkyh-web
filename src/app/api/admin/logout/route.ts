@@ -8,10 +8,10 @@ import { NextResponse } from "next/server";
 export function GET() {
   // 创建重定向响应
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  console.log(`[LOGOUT] 管理员退出登录, 重定向到: ${baseUrl}/admin/login, 环境: ${process.env.NODE_ENV}`);
+  console.log(`[LOGOUT] 管理员退出登录, 重定向到: ${baseUrl}/, 环境: ${process.env.NODE_ENV}`);
   
   const response = NextResponse.redirect(
-    new URL("/admin/login", baseUrl)
+    new URL("/", baseUrl)
   );
   
   // 通过设置过期cookie来清除会话，确保所有环境参数一致

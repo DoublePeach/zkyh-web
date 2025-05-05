@@ -21,26 +21,85 @@ const APP_URL = 'https://medical-cert-exam-prep.vercel.app';
 const APP_NAME = 'MedCertExamPrep';
 
 /**
+ * @description 带有重试机制的fetch函数
+ * @param {string} url - 请求URL
+ * @param {RequestInit} options - fetch选项
+ * @param {number} retries - 重试次数
+ * @param {number} retryDelay - 重试延迟(ms)
+ * @param {number} timeout - 超时时间(ms)
+ * @returns {Promise<Response>}
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 3,
+  retryDelay = 1000,
+  timeout = 30000
+): Promise<Response> {
+  return new Promise(async (resolve, reject) => {
+    // 设置超时
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    // 添加signal到options
+    const fetchOptions = {
+      ...options,
+      signal: controller.signal,
+    };
+    
+    let lastError: Error | null = null;
+    
+    // 尝试请求，最多重试指定次数
+    for (let i = 0; i < retries; i++) {
+      try {
+        console.log(`API请求尝试 ${i + 1}/${retries}...`);
+        const response = await fetch(url, fetchOptions);
+        clearTimeout(timeoutId);
+        resolve(response);
+        return;
+      } catch (error) {
+        console.error(`API请求失败 (尝试 ${i + 1}/${retries}):`, error);
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        // 如果已达到最大重试次数或是被用户取消的请求，不再重试
+        if (i === retries - 1 || (error instanceof Error && error.name === 'AbortError')) {
+          break;
+        }
+        
+        // 等待一段时间后重试
+        await new Promise(r => setTimeout(r, retryDelay));
+      }
+    }
+    
+    // 所有重试都失败
+    clearTimeout(timeoutId);
+    reject(lastError || new Error('所有API请求尝试都失败'));
+  });
+}
+
+/**
  * @description 从OpenRouter获取备考方案
  * @param {SurveyFormData} surveyData - 用户调查问卷数据
  * @returns {Promise<AIResponseData>} - AI生成的备考方案
  */
 export async function generateStudyPlan(surveyData: SurveyFormData): Promise<AIResponseData> {
+  // 获取职称级别和考试天数，供任何地方使用（包括错误处理）
+  const examYear = parseInt(surveyData.examYear);
+  const examDate = new Date(examYear, 3, 13); // 月份从0开始，所以4月是3
+  const today = new Date();
+  const daysUntilExam = Math.max(1, Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+  
+  // 获取职称级别
+  const titleLevel = surveyData.titleLevel === 'junior' ? '初级护师' : 
+                    surveyData.titleLevel === 'mid' ? '主管护师' : 
+                    surveyData.otherTitleLevel;
+  
   try {
     console.log('开始生成备考方案...');
     
-    // 计算考试日期（默认为每年4月13日）
-    const examYear = parseInt(surveyData.examYear);
-    const examDate = new Date(examYear, 3, 13); // 月份从0开始，所以4月是3
-    const today = new Date();
-    const daysUntilExam = Math.max(1, Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
     console.log(`距离考试还有${daysUntilExam}天`);
     
     // 获取相关中文描述
-    const titleLevel = surveyData.titleLevel === 'junior' ? '初级护师' : 
-                      surveyData.titleLevel === 'mid' ? '主管护师' : 
-                      surveyData.otherTitleLevel;
-                      
     const examStatus = surveyData.examStatus === 'first' ? '首次参加考试' : '已通过部分科目';
     
     // 生成学习基础描述
@@ -128,7 +187,7 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<AIR
     console.log('准备发送请求到OpenRouter API...');
     
     // 使用fetch API发送请求，确保正确设置Content-Type头部
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -143,7 +202,8 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<AIR
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter API错误:', errorText);
-      throw new Error(`OpenRouter API调用失败: ${response.statusText}`);
+      console.log('使用备用方案...');
+      return createFallbackStudyPlan(titleLevel, daysUntilExam);
     }
     
     console.log('OpenRouter API响应成功，正在解析结果...');
@@ -183,7 +243,8 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<AIR
     }
   } catch (error: unknown) {
     console.error('生成备考方案失败:', error);
-    throw new Error(`AI 请求失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.log('使用备用方案...');
+    return createFallbackStudyPlan(titleLevel, daysUntilExam);
   }
 }
 
