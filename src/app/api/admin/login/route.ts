@@ -73,9 +73,11 @@ export async function POST(req: Request) {
       path: "/",
       // 设置为8小时过期，提高会话持久性
       maxAge: 60 * 60 * 8,
+      // 确保在生产环境中也能正确设置Domain
+      domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN || undefined : undefined,
     });
     
-    console.log(`[管理员登录] 成功: ${username}, 会话时长: 8小时`);
+    console.log(`[管理员登录] 成功: ${username}, 会话时长: 8小时, 环境: ${process.env.NODE_ENV}`);
     
     // 返回管理员登录成功响应
     return NextResponse.json({

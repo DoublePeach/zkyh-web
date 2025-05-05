@@ -183,7 +183,7 @@ export default function NewKnowledgePointPage() {
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);
     try {
-      // 格式化数据，转换关键词为数组，标签为JSON对象
+      // 修复：格式化数据，确保关键词数组格式正确，标签为JSON对象
       const formattedData: KnowledgePointRequest = {
         chapterId: parseInt(data.chapterId),
         subjectId: parseInt(data.subjectId),
@@ -191,6 +191,7 @@ export default function NewKnowledgePointPage() {
         content: data.content,
         difficulty: data.difficulty,
         importance: data.importance,
+        // 直接传递简单的字符串数组，不是JSON字符串
         keywords: data.keywords ? data.keywords.split(',').map(k => k.trim()) : undefined,
         tags: data.tags ? JSON.parse(`{${data.tags}}`) : undefined,
       };

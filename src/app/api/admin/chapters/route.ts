@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { chapters, nursingDisciplines } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
-import { getAdminSession } from "@/lib/auth/admin-auth";
+import { withAdminAuth } from "@/lib/auth/admin-auth";
 
 // 请求验证Schema
 const chapterSchema = z.object({
@@ -41,17 +41,8 @@ function handleError(error: unknown, operation: string): NextResponse {
 }
 
 // 获取所有章节，可按学科过滤
-export async function GET(req: NextRequest) {
+export const GET = withAdminAuth(async (req: NextRequest) => {
   try {
-    // 验证管理员身份
-    const admin = await getAdminSession();
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, message: '未授权，请重新登录' },
-        { status: 401 }
-      );
-    }
-    
     const { searchParams } = new URL(req.url);
     const disciplineId = searchParams.get('disciplineId');
     
@@ -121,20 +112,11 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     return handleError(error, "获取章节");
   }
-}
+});
 
 // 创建新的章节
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (req: NextRequest) => {
   try {
-    // 验证管理员身份
-    const admin = await getAdminSession();
-    if (!admin) {
-      return NextResponse.json(
-        { success: false, message: '未授权，请重新登录' },
-        { status: 401 }
-      );
-    }
-    
     const body = await req.json();
     console.log("收到创建章节请求:", body);
     
@@ -224,4 +206,4 @@ export async function POST(req: Request) {
   } catch (error) {
     return handleError(error, "创建章节");
   }
-} 
+}); 

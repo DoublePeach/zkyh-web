@@ -1,11 +1,13 @@
 /**
- * @description 管理后台身份验证中间件
+ * @description 管理后台身份验证中间件（当前已禁用验证）
  * @author 郝桃桃
  * @date 2024-06-17
  */
 import { NextResponse, NextRequest } from 'next/server'
 
-// 需要保护的管理后台路径
+// 所有管理路径不再需要鉴权，注释保留作为参考
+/* 
+// 需要保护的管理后台路径 (当前已禁用)
 const PROTECTED_ADMIN_PATHS = [
   '/admin',
   '/admin/dashboard',
@@ -20,7 +22,7 @@ const PROTECTED_ADMIN_PATHS = [
   '/admin/exam-papers'
 ]
 
-// API路径，处理方式同样
+// API路径，处理方式同样 (当前已禁用)
 const PROTECTED_ADMIN_API_PATHS = [
   '/api/admin/chapters',
   '/api/admin/exam-subjects',
@@ -32,50 +34,21 @@ const PROTECTED_ADMIN_API_PATHS = [
   '/api/admin/study-plans',
   '/api/admin/exam-papers'
 ]
+*/
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
-  // 管理员登录路径不需要验证
-  if (pathname === '/admin/login' || pathname === '/api/admin/login') {
-    return NextResponse.next()
-  }
-  
-  // 优化检测逻辑：使用更精确的路径匹配
-  const isAdminPath = PROTECTED_ADMIN_PATHS.some(path => 
-    pathname === path || pathname.startsWith(`${path}/`))
-  
-  const isAdminApiPath = PROTECTED_ADMIN_API_PATHS.some(path => 
-    pathname === path || pathname.startsWith(`${path}/`))
-
-  // 如果是管理后台路径或API路径，检查是否有有效会话
-  if (isAdminPath || isAdminApiPath) {
-    const adminSession = request.cookies.get('admin_session')
-
-    // 如果无有效会话，重定向到管理员登录页面或返回401
-    if (!adminSession || !adminSession.value) {
-      console.log(`[AUTH] 无效管理员会话，访问: ${pathname}`)
-      
-      // API请求返回401状态码
-      if (isAdminApiPath) {
-        return NextResponse.json(
-          { success: false, message: '未授权，请重新登录' },
-          { status: 401 }
-        )
-      }
-      
-      // 页面请求重定向到登录
-      const loginUrl = new URL('/admin/login', request.url)
-      // 记录原始URL以便登录后重定向回去
-      loginUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(loginUrl)
-    }
+  // 记录访问日志，但不做身份验证
+  if (pathname.startsWith('/admin/') || pathname.startsWith('/api/admin/')) {
+    console.log(`[AUTH] 已禁用鉴权: 允许访问管理路径 ${pathname}, 环境: ${process.env.NODE_ENV}`);
   }
 
+  // 所有请求都直接放行
   return NextResponse.next()
 }
 
-// 配置中间件匹配路径
+// 配置中间件匹配路径 - 仅用于日志记录
 export const config = {
   matcher: [
     '/admin/:path*',

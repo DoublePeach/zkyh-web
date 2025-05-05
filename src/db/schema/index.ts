@@ -72,7 +72,7 @@ export const knowledgePoints = pgTable('knowledge_points', {
   content: text('content'),
   difficulty: integer('difficulty').default(3).notNull(), // 难度 (1-5)
   importance: integer('importance').default(3).notNull(), // 重要度 (1-5)
-  keywords: jsonb('keywords').$type<string[]>(),
+  keywords: text('keywords').array(),  // 关键词使用text数组类型
   tags: jsonb('tags').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
