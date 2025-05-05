@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
 
     // 如果无有效会话，重定向到管理员登录页面或返回401
     if (!adminSession || !adminSession.value) {
-      console.log(`[AUTH] 无效管理员会话，访问: ${pathname}`)
+      console.log(`[AUTH] 无效管理员会话，访问: ${pathname}, 环境: ${process.env.NODE_ENV}, Cookie: ${adminSession ? '存在但无值' : '不存在'}`)
       
       // API请求返回401状态码
       if (isAdminApiPath) {
@@ -67,9 +67,12 @@ export async function middleware(request: NextRequest) {
       // 页面请求重定向到登录
       const loginUrl = new URL('/admin/login', request.url)
       // 记录原始URL以便登录后重定向回去
-      loginUrl.searchParams.set('redirect', pathname)
+      loginUrl.searchParams.set('redirect', encodeURIComponent(pathname))
       return NextResponse.redirect(loginUrl)
     }
+    
+    // 有会话时添加调试日志
+    console.log(`[AUTH] 管理员会话有效，访问: ${pathname}, 会话ID: ${adminSession.value}`)
   }
 
   return NextResponse.next()

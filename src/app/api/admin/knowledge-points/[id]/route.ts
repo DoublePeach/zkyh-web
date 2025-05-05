@@ -216,6 +216,8 @@ export async function PUT(
     await db.update(knowledgePoints)
       .set({
         ...validatedData,
+        // 确保keywords是字符串数组格式，保持原始数组，不进行JSON转换
+        keywords: validatedData.keywords,
         updatedAt: new Date(),
       })
       .where(eq(knowledgePoints.id, id));

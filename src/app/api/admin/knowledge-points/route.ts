@@ -152,11 +152,15 @@ export async function POST(req: Request) {
 
     // 插入新知识点
     const now = new Date();
-    const result = await db.insert(knowledgePoints).values({
+    const dataToInsert = {
       ...validatedData,
+      // 确保keywords是正确的字符串数组格式，而不是JSON字符串
+      keywords: validatedData.keywords,
       createdAt: now,
       updatedAt: now,
-    }).returning();
+    };
+    
+    const result = await db.insert(knowledgePoints).values(dataToInsert).returning();
 
     const newKnowledgePoint = result[0];
 

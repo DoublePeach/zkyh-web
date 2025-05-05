@@ -33,7 +33,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectPath = searchParams.get('redirect') || '/admin/dashboard';
+  const redirectParam = searchParams.get('redirect');
+  const redirectPath = redirectParam ? decodeURIComponent(redirectParam) : '/admin/dashboard';
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

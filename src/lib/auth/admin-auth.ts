@@ -41,13 +41,13 @@ export async function getAdminSession(): Promise<AdminUser | null> {
     const adminSession = cookieStore.get('admin_session');
     
     if (!adminSession || !adminSession.value) {
-      console.log('[AUTH] 未找到管理员会话cookie');
+      console.log('[AUTH] 未找到管理员会话cookie，环境:', process.env.NODE_ENV);
       return null;
     }
     
     const adminId = parseInt(adminSession.value);
     if (isNaN(adminId)) {
-      console.log('[AUTH] 管理员ID无效:', adminSession.value);
+      console.log('[AUTH] 管理员ID无效:', adminSession.value, '环境:', process.env.NODE_ENV);
       return null;
     }
     
@@ -57,18 +57,19 @@ export async function getAdminSession(): Promise<AdminUser | null> {
     });
     
     if (!admin) {
-      console.log('[AUTH] 未找到管理员用户:', adminId);
+      console.log('[AUTH] 未找到管理员用户:', adminId, '环境:', process.env.NODE_ENV);
       return null;
     }
     
     if (!admin.isActive) {
-      console.log('[AUTH] 管理员账户未激活:', adminId);
+      console.log('[AUTH] 管理员账户未激活:', adminId, '环境:', process.env.NODE_ENV);
       return null;
     }
     
+    console.log('[AUTH] 成功获取管理员会话:', adminId, '环境:', process.env.NODE_ENV);
     return admin as AdminUser;
   } catch (error) {
-    console.error('获取管理员会话失败:', error);
+    console.error('获取管理员会话失败:', error, '环境:', process.env.NODE_ENV);
     return null;
   }
 }
