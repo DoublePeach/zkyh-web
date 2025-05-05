@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { studyPlans } from "@/db/schema/studyPlans";
 import { studyModules } from "@/db/schema/studyModules";
 import { dailyTasks } from "@/db/schema/dailyTasks";
-import { SurveyFormData, DailyTaskGenerated } from "@/types/survey";
+import { SurveyFormData } from "@/types/survey";
 import { generateStudyPlan } from "@/lib/ai/openrouter";
 import { eq } from "drizzle-orm";
 import { ApiResponse } from './api-service';
@@ -32,11 +32,15 @@ interface PlanDetailsData {
  */
 export async function createStudyPlan(userId: number | string, formData: SurveyFormData): Promise<number> {
   try {
+    console.log('开始创建备考规划...');
+    
     // 确保userId是数字类型
     const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
     
     // 1. 调用AI生成备考方案
+    console.log('正在调用AI生成备考方案...');
     const planData = await generateStudyPlan(formData);
+    console.log('AI成功生成备考方案');
     
     // 2. 计算开始日期和结束日期
     const startDate = new Date();
@@ -51,47 +55,22 @@ export async function createStudyPlan(userId: number | string, formData: SurveyF
     // 4. 准备备考规划数据
     const planTitle = `护理职称(${formData.titleLevel === 'other' ? formData.otherTitleLevel : (formData.titleLevel === 'junior' ? '初级护师' : '主管护师')})备考规划`;
     
+    console.log(`准备保存备考规划数据: ${planTitle}, 总天数: ${totalDays}天`);
+    
     // 5. 保存备考规划到数据库
     const [plan] = await db.insert(studyPlans).values({
       userId: userIdNum,
       title: planTitle,
-      overview: planData.overview,
-      profession: 'nursing', // 现在默认是护理类
-      targetTitle: formData.titleLevel,
-      totalDays: totalDays,
       startDate: startDate,
       endDate: endDate,
-      isActive: true,
+      totalDays: totalDays,
+      examYear: examYear,
+      // 存储完整的规划数据为JSON
+      planData: planData,
+      isActive: true
     }).returning({ id: studyPlans.id });
     
-    // 6. 保存学习模块
-    for (const studyModule of planData.modules) {
-      const [moduleRecord] = await db.insert(studyModules).values({
-        planId: plan.id,
-        title: studyModule.title,
-        description: studyModule.description,
-        order: studyModule.order,
-        durationDays: studyModule.durationDays,
-        importance: studyModule.importance,
-        difficulty: studyModule.difficulty,
-      }).returning({ id: studyModules.id });
-      
-      // 7. 为这个模块保存每日任务
-      const moduleTasks = planData.tasks.filter((task: DailyTaskGenerated) => task.moduleIndex === studyModule.order - 1);
-      
-      for (const task of moduleTasks) {
-        await db.insert(dailyTasks).values({
-          moduleId: moduleRecord.id,
-          day: task.day,
-          title: task.title,
-          description: task.description,
-          learningContent: task.learningContent,
-          estimatedMinutes: task.estimatedMinutes,
-          isCompleted: false,
-        });
-      }
-    }
-    
+    console.log(`备考规划成功创建，ID: ${plan.id}`);
     return plan.id;
   } catch (error) {
     console.error('创建备考规划失败:', error);
@@ -121,35 +100,35 @@ export async function getUserStudyPlans(userId: number | string): Promise<ApiRes
 /**
  * @description 获取备考规划的详细信息
  * @param {number|string} planId - 备考规划ID
- * @returns {Promise<ApiResponse<PlanDetailsData>>}
+ * @returns {Promise<ApiResponse<any>>}
  */
-export async function getStudyPlanDetails(planId: number | string): Promise<ApiResponse<PlanDetailsData>> {
+export async function getStudyPlanDetails(planId: number | string): Promise<ApiResponse<any>> {
   try {
     const planIdNum = typeof planId === 'string' ? parseInt(planId, 10) : planId;
     
-    // 1. 获取备考规划基本信息
+    // 获取备考规划基本信息
     const plan = await db.select().from(studyPlans).where(eq(studyPlans.id, planIdNum)).limit(1);
     
     if (!plan || plan.length === 0) {
       return { success: false, error: '备考规划不存在' };
     }
     
-    // 2. 获取所有学习模块
-    const modules = await db.select()
-      .from(studyModules)
-      .where(eq(studyModules.planId, planIdNum))
-      .orderBy(studyModules.order);
+    // 返回完整的规划数据，包括基本信息和详细规划
+    const planDetails = plan[0];
     
-    // 3. 获取所有模块的每日任务
-    const moduleIds = modules.map(m => m.id);
+    // 为了向后兼容，如果没有planData，则返回空数组
+    const planData = planDetails.planData as any || {};
+    const phases = planData.phases || [];
+    const dailyPlans = planData.dailyPlans || [];
     
-    const tasks = moduleIds.length > 0 
-      ? await db.select().from(dailyTasks).where(
-          eq(dailyTasks.moduleId, moduleIds[0])
-        ).orderBy(dailyTasks.day)
-      : [];
-    
-    return { success: true, data: { plan: plan[0], modules, tasks } };
+    return { 
+      success: true, 
+      data: { 
+        plan: planDetails,
+        phases,
+        dailyPlans,
+      }
+    };
   } catch (error: unknown) {
     console.error('获取备考规划详情失败:', error);
     return { success: false, error: error instanceof Error ? error.message : "未知错误" };
@@ -204,4 +183,36 @@ export async function getModuleTasks(moduleId: number | string): Promise<ApiResp
 //     'senior': '正高级'
 //   };
 //   return map[title] || '未知职称';
-// } 
+// }
+
+/**
+ * @description 删除备考规划
+ * @param {number|string} planId - 备考规划ID
+ * @returns {Promise<ApiResponse<boolean>>} - 删除操作结果
+ */
+export async function deleteStudyPlan(planId: number | string): Promise<ApiResponse<boolean>> {
+  try {
+    console.log('开始删除备考规划，ID:', planId);
+    const planIdNum = typeof planId === 'string' ? parseInt(planId, 10) : planId;
+    
+    // 先检查规划是否存在
+    const existingPlan = await db.select({ id: studyPlans.id })
+      .from(studyPlans)
+      .where(eq(studyPlans.id, planIdNum))
+      .limit(1);
+      
+    if (!existingPlan || existingPlan.length === 0) {
+      return { success: false, error: '备考规划不存在' };
+    }
+    
+    // 执行删除操作
+    await db.delete(studyPlans)
+      .where(eq(studyPlans.id, planIdNum));
+    
+    console.log('备考规划删除成功，ID:', planId);
+    return { success: true, data: true };
+  } catch (error: unknown) {
+    console.error('删除备考规划失败:', error);
+    return { success: false, error: error instanceof Error ? error.message : "未知错误" };
+  }
+} 

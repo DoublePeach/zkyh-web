@@ -5,6 +5,12 @@
  */
 
 /**
+ * @description 备考问卷表单数据类型
+ * @author 郝桃桃
+ * @date 2024-05-30
+ */
+
+/**
  * @description 调查表单数据类型
  */
 export interface SurveyFormData {
@@ -44,33 +50,46 @@ export interface StudyPlanGenerated {
   // 备考方案总览
   overview: string;
   
-  // 学习模块列表
-  modules: StudyModuleGenerated[];
+  // 学习阶段
+  phases: PhaseGenerated[];
   
-  // 每日任务列表
-  tasks: DailyTaskGenerated[];
+  // 每日任务
+  dailyPlans: DailyPlanGenerated[];
 }
 
 /**
- * @description AI生成的学习模块类型
+ * @description AI生成的学习阶段类型
  */
-export interface StudyModuleGenerated {
-  title: string;
+export interface PhaseGenerated {
+  id: number;
+  name: string;
   description: string;
-  importance: number; // 1-10
-  difficulty: number; // 1-10
-  durationDays: number;
-  order: number;
+  startDay: number;
+  endDay: number;
+  focusAreas: string[];
+  learningGoals: string[];
+  recommendedResources: string[];
 }
 
 /**
- * @description AI生成的每日任务类型
+ * @description AI生成的每日学习计划类型
  */
-export interface DailyTaskGenerated {
-  moduleIndex: number; // 所属模块的索引
-  day: number; // 第几天
+export interface DailyPlanGenerated {
+  day: number;
+  date: string;
+  phaseId: number;
+  title: string;
+  subjects: string[];
+  tasks: TaskGenerated[];
+  reviewTips: string;
+}
+
+/**
+ * @description AI生成的学习任务类型
+ */
+export interface TaskGenerated {
   title: string;
   description: string;
-  learningContent: string;
-  estimatedMinutes: number;
+  duration: number;
+  resources: string[];
 } 

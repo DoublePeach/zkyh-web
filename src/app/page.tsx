@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/use-auth-store';
-import { BookOpen, BarChart, /* Trophy, */ Clock } from 'lucide-react';
+import { BookOpen, BarChart, /* Trophy, */ Clock, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -99,11 +99,20 @@ export default function HomePage() {
           <div className="max-w-md">
             <h2 className="text-2xl font-bold mb-2">开启您的职称晋升之旅</h2>
             <p className="mb-6">为卫生专业技术人员提供个性化备考规划</p>
-            <Link href="/survey">
-              <Button className="bg-white text-indigo-600 hover:bg-gray-100 hover:text-indigo-700">
-                立即开始备考规划
-              </Button>
-            </Link>
+            <div className="flex gap-3">
+              <Link href="/survey">
+                <Button className="bg-white text-indigo-600 hover:bg-gray-100 hover:text-indigo-700">
+                  立即开始备考规划
+                </Button>
+              </Link>
+              {isAuthenticated && studyPlans.length > 0 && (
+                <Link href="/study-plans">
+                  <Button variant="outline" className="bg-transparent border-white text-white hover:bg-white/10">
+                    查看我的规划
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
         
@@ -111,7 +120,15 @@ export default function HomePage() {
         {isAuthenticated && studyPlans.length > 0 ? (
           <Card className="mb-6">
             <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">我的备考概况</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">我的备考概况</h3>
+                <Link href="/study-plans">
+                  <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700">
+                    查看全部规划
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
                   <p className="text-sm text-gray-500">活跃备考方案</p>
@@ -131,7 +148,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="mt-4 flex justify-end">
-                <Link href="/learn">
+                <Link href="/study-plans">
                   <Button variant="outline" className="text-indigo-600 border-indigo-600">
                     继续学习
                   </Button>
@@ -179,7 +196,7 @@ export default function HomePage() {
               </Card>
             </Link>
             
-            <Link href="/learn" className="no-underline">
+            <Link href="/study-plans" className="no-underline">
               <Card className="h-full hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center">

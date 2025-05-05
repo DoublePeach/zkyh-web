@@ -1,19 +1,33 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
+  "version": "5",
+  "dialect": "pg",
   "entries": [
     {
-      "idx": 0,
-      "version": "7",
-      "when": 1745984964802,
-      "tag": "0000_orange_puff_adder",
+      "idx": 1,
+      "version": "5",
+      "when": 1716120000000,
+      "tag": "0001_initial",
       "breakpoints": true
     },
     {
-      "idx": 1,
-      "version": "7",
-      "when": 1746206176625,
-      "tag": "0001_woozy_liz_osborn",
+      "idx": 2,
+      "version": "5",
+      "when": 1716206400000,
+      "tag": "0002_update",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1718536800000,
+      "tag": "0003_add_plan_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1718969100000,
+      "tag": "0004_optimize_study_plans",
       "breakpoints": true
     }
   ]

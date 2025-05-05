@@ -112,4 +112,31 @@ export async function getModuleTasks(moduleId: number | string): Promise<DailyTa
     console.error('获取模块任务失败:', error);
     throw error;
   }
+}
+
+/**
+ * @description 删除备考规划
+ * @param {number|string} planId - 备考规划ID
+ * @returns {Promise<boolean>} - 返回删除操作是否成功
+ */
+export async function deleteStudyPlan(planId: number | string): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/study-plans/${planId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `删除备考规划失败: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    return data.success;
+  } catch (error) {
+    console.error('删除备考规划失败:', error);
+    throw error;
+  }
 } 
