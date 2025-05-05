@@ -3,11 +3,12 @@
  * @author 郝桃桃
  * @date 2024-05-23
  */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { nursingDisciplines } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { withAdminAuth } from "@/lib/auth/admin-auth";
 
 // 请求验证Schema
 const nursingDisciplineSchema = z.object({
@@ -17,7 +18,7 @@ const nursingDisciplineSchema = z.object({
 });
 
 // 获取所有护理学科
-export async function GET() {
+export const GET = withAdminAuth(async () => {
   try {
     const disciplines = await db.query.nursingDisciplines.findMany({
       orderBy: (disciplines, { asc }) => [asc(disciplines.id)],
@@ -34,10 +35,10 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});
 
 // 创建新的护理学科
-export async function POST(req: Request) {
+export const POST = withAdminAuth(async (req: NextRequest) => {
   try {
     const body = await req.json();
     const validatedData = nursingDisciplineSchema.parse(body);
@@ -82,4 +83,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-} 
+}); 

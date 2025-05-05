@@ -86,15 +86,35 @@ export function withAdminAuth<T extends Record<string, string> = Record<string, 
     const admin = await getAdminSession();
     
     if (!admin) {
-      return NextResponse.json(
-        { success: false, message: '未授权，请重新登录' },
-        { status: 401 }
-      );
+      console.log(`[AUTH] withAdminAuth 拒绝请求: 未找到有效的管理员会话, 请求路径: ${req.nextUrl.pathname}, 环境: ${process.env.NODE_ENV}`);
+      
+      // 如果是API请求，返回JSON响应
+      if (req.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { success: false, message: '未授权，请重新登录' },
+          { status: 401 }
+        );
+      }
+      
+      // 如果是页面请求，重定向到登录页
+      const loginUrl = new URL('/admin/login', req.url);
+      loginUrl.searchParams.set('redirect', encodeURIComponent(req.nextUrl.pathname));
+      return NextResponse.redirect(loginUrl);
     }
+    
+    console.log(`[AUTH] withAdminAuth 授权通过: 管理员ID: ${admin.id}, 用户名: ${admin.username}, 请求路径: ${req.nextUrl.pathname}`);
     
     // 注入管理员信息到请求上下文
     const contextWithAdmin = { ...context, admin };
     
-    return handler(req, contextWithAdmin);
+    try {
+      return await handler(req, contextWithAdmin);
+    } catch (error) {
+      console.error(`[AUTH] 处理请求时出错:`, error);
+      return NextResponse.json(
+        { success: false, message: '服务器错误，请稍后再试' },
+        { status: 500 }
+      );
+    }
   };
 } 
