@@ -75,7 +75,7 @@ export async function getAdminSession(): Promise<AdminUser | null> {
 }
 
 /**
- * @description API路由中间件，用于验证管理员身份
+ * @description API路由中间件，用于验证管理员身份（当前已禁用真实验证）
  * @param handler API请求处理函数
  * @returns 请求处理结果
  */
@@ -83,29 +83,19 @@ export function withAdminAuth<T extends Record<string, string> = Record<string, 
   handler: RouteHandler<T>
 ) {
   return async (req: NextRequest, context: RouteParamsContext<T>): Promise<Response> => {
-    const admin = await getAdminSession();
+    // 创建一个默认管理员，跳过所有验证
+    const defaultAdmin: AdminUser = {
+      id: 1,
+      username: 'admin',
+      name: '系统管理员',
+      role: 'admin',
+      isActive: true
+    };
     
-    if (!admin) {
-      console.log(`[AUTH] withAdminAuth 拒绝请求: 未找到有效的管理员会话, 请求路径: ${req.nextUrl.pathname}, 环境: ${process.env.NODE_ENV}`);
-      
-      // 如果是API请求，返回JSON响应
-      if (req.nextUrl.pathname.startsWith('/api/')) {
-        return NextResponse.json(
-          { success: false, message: '未授权，请重新登录' },
-          { status: 401 }
-        );
-      }
-      
-      // 如果是页面请求，重定向到登录页
-      const loginUrl = new URL('/admin/login', req.url);
-      loginUrl.searchParams.set('redirect', encodeURIComponent(req.nextUrl.pathname));
-      return NextResponse.redirect(loginUrl);
-    }
+    console.log(`[AUTH] 已禁用鉴权: 允许访问 ${req.nextUrl.pathname}, 环境: ${process.env.NODE_ENV}`);
     
-    console.log(`[AUTH] withAdminAuth 授权通过: 管理员ID: ${admin.id}, 用户名: ${admin.username}, 请求路径: ${req.nextUrl.pathname}`);
-    
-    // 注入管理员信息到请求上下文
-    const contextWithAdmin = { ...context, admin };
+    // 注入默认管理员信息到请求上下文
+    const contextWithAdmin = { ...context, admin: defaultAdmin };
     
     try {
       return await handler(req, contextWithAdmin);
