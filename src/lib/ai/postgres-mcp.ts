@@ -5,7 +5,7 @@
  */
 
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { createSmitheryUrl } from "@smithery/sdk";
+import { createSmitheryUrl } from "./smithery-sdk";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { DB_CONFIG, MCP_CONFIG } from '@/lib/config';
 

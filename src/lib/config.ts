@@ -79,12 +79,26 @@ export const DB_CONFIG = {
 
 // AI 模型配置
 export const AI_CONFIG = {
-  // OpenRouter API 密钥
+  // OpenRouter API 密钥 (已不可用)
   OPENROUTER_API_KEY: getEnv('OPENROUTER_API_KEY', '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'),
   // OpenRouter API 基础 URL
   OPENROUTER_BASE_URL: getEnv('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+  // Deepseek API 密钥
+  DEEPSEEK_API_KEY: getEnv('DEEPSEEK_API_KEY', 'sk-ed222c4e2fcc4a64af6b3692e29cf443'),
+  // Deepseek API 基础 URL
+  DEEPSEEK_BASE_URL: getEnv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1'),
+  // 默认模型供应商 (deepseek 或 openrouter)
+  DEFAULT_PROVIDER: getEnv('DEFAULT_PROVIDER', 'deepseek'),
   // 默认模型
-  DEFAULT_MODEL: getEnv('DEFAULT_MODEL', 'anthropic/claude-3-opus:beta'),
+  DEFAULT_MODEL: getEnv('DEFAULT_MODEL', 'deepseek-chat'),
+  // 获取当前API密钥
+  get CURRENT_API_KEY(): string {
+    return this.DEFAULT_PROVIDER === 'deepseek' ? this.DEEPSEEK_API_KEY : this.OPENROUTER_API_KEY;
+  },
+  // 获取当前API基础URL
+  get CURRENT_BASE_URL(): string {
+    return this.DEFAULT_PROVIDER === 'deepseek' ? this.DEEPSEEK_BASE_URL : this.OPENROUTER_BASE_URL;
+  }
 };
 
 // MCP 配置
