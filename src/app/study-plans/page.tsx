@@ -6,7 +6,7 @@
  * @date 2024-06-25
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -44,7 +44,7 @@ export default function StudyPlansPage() {
   const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null);
   
   // 获取所有备考规划
-  const fetchStudyPlans = async () => {
+  const fetchStudyPlans = useCallback(async () => {
     if (!isAuthenticated || !user) return;
     
     try {
@@ -57,7 +57,7 @@ export default function StudyPlansPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, user]);
   
   // 删除备考规划
   const handleDeletePlan = async (planId: number) => {
@@ -87,7 +87,7 @@ export default function StudyPlansPage() {
     }
     
     fetchStudyPlans();
-  }, [isAuthenticated, router, user]);
+  }, [isAuthenticated, router, user, fetchStudyPlans]);
   
   // 计算距离考试的天数
   const getDaysRemaining = (endDate: Date) => {
@@ -98,13 +98,13 @@ export default function StudyPlansPage() {
     return diffDays > 0 ? diffDays : 0;
   };
   
-  // 获取考试年份
-  const getExamYearDisplay = (plan: StudyPlan) => {
-    return plan.examYear ? `${plan.examYear}年考试` : '';
+  // 获取考试年份显示文本
+  const getExamYearDisplay = (studyPlan: StudyPlan) => {
+    return studyPlan.examYear ? `${studyPlan.examYear}年考试` : '';
   };
   
   // 获取规划的第一个阶段ID，用于"开始学习"按钮
-  const getFirstPhaseId = (plan: StudyPlan) => {
+  const getFirstPhaseId = (_studyPlan: StudyPlan) => {
     // 这里假设计划的第一个阶段ID是1，如果有更准确的方式获取可以修改
     return 1;
   };

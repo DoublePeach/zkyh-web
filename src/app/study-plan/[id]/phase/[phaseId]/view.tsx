@@ -16,16 +16,56 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, Book, Clock, BookOpen, ArrowLeft, CheckCircle, PlayCircle } from 'lucide-react';
+import { Book, Clock, BookOpen, ArrowLeft, CheckCircle, PlayCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
+
+// 定义类型
+interface Plan {
+  id: number;
+  title: string;
+  totalDays: number;
+  startDate: string | Date;
+  endDate: string | Date;
+  overview?: string;
+  planData?: Record<string, unknown>;
+}
+
+interface Phase {
+  id: number;
+  name: string;
+  description: string;
+  startDay: number;
+  endDay: number;
+  focusAreas: string[];
+  learningGoals: string[];
+  recommendedResources: string[];
+}
+
+interface Task {
+  title: string;
+  description: string;
+  duration: number;
+  resources: string[];
+  isCompleted: boolean;
+}
+
+interface DailyPlan {
+  day: number;
+  date: string;
+  phaseId: number;
+  title: string;
+  subjects: string[];
+  tasks: Task[];
+  reviewTips?: string;
+}
 
 /**
  * @description 从localStorage获取缓存的规划数据
  * @param {string} planId - 备考规划ID
  * @returns {any|null} - 缓存的数据或null
  */
-function getCachedPlanData(planId: string) {
+function getCachedPlanData(planId: string): { plan: Plan; phases: Phase[]; dailyPlans: DailyPlan[] } | null {
   if (typeof window === 'undefined') return null;
   
   try {
@@ -53,10 +93,10 @@ function getCachedPlanData(planId: string) {
 /**
  * @description 缓存规划数据到localStorage
  * @param {string} planId - 备考规划ID 
- * @param {any} data - 要缓存的数据
+ * @param {Object} data - 要缓存的数据
  * @returns {void}
  */
-function cachePlanData(planId: string, data: any) {
+function cachePlanData(planId: string, data: { plan: Plan; phases: Phase[]; dailyPlans: DailyPlan[] }): void {
   if (typeof window === 'undefined') return;
   
   try {
@@ -78,19 +118,19 @@ export default function PhaseDetailView() {
   const { isAuthenticated } = useAuthStore();
   
   const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<any>({});
-  const [phases, setPhases] = useState<any[]>([]);
-  const [dailyPlans, setDailyPlans] = useState<any[]>([]);
-  const [currentPhase, setCurrentPhase] = useState<any>(null);
+  const [plan, setPlan] = useState<Plan>({} as Plan);
+  const [phases, setPhases] = useState<Phase[]>([]);
+  const [dailyPlans, setDailyPlans] = useState<DailyPlan[]>([]);
+  const [currentPhase, setCurrentPhase] = useState<Phase | null>(null);
   
   // 获取特定阶段的任务
-  const getPhaseTasks = (phaseId: number) => {
+  const getPhaseTasks = (phaseId: number): DailyPlan[] => {
     if (!dailyPlans || !dailyPlans.length) return [];
     return dailyPlans.filter(plan => plan.phaseId === phaseId);
   };
   
   // 获取备考规划数据
-  const fetchPlanData = async (planId: string, phaseId: string) => {
+  const fetchPlanData = async (planId: string, phaseId: string): Promise<void> => {
     setLoading(true);
     
     try {
@@ -103,7 +143,7 @@ export default function PhaseDetailView() {
         
         // 设置当前阶段
         const phaseIdNum = parseInt(phaseId, 10);
-        const phase = cachedData.phases.find((p: any) => p.id === phaseIdNum);
+        const phase = cachedData.phases.find((p: Phase) => p.id === phaseIdNum);
         setCurrentPhase(phase || null);
         
         setLoading(false);
@@ -124,9 +164,9 @@ export default function PhaseDetailView() {
       }
       
       // 为每个任务添加完成状态
-      const plansWithStatus = result.data.dailyPlans.map((day: any) => ({
+      const plansWithStatus = result.data.dailyPlans.map((day: DailyPlan) => ({
         ...day,
-        tasks: day.tasks.map((task: any) => ({
+        tasks: day.tasks.map((task) => ({
           ...task,
           isCompleted: false
         }))
@@ -147,7 +187,7 @@ export default function PhaseDetailView() {
       
       // 设置当前阶段
       const phaseIdNum = parseInt(phaseId, 10);
-      const phase = data.phases.find((p: any) => p.id === phaseIdNum);
+      const phase = data.phases.find((p: Phase) => p.id === phaseIdNum);
       setCurrentPhase(phase || null);
     } catch (error) {
       console.error('获取备考规划失败:', error);
@@ -196,7 +236,7 @@ export default function PhaseDetailView() {
   };
   
   // 开始学习任务
-  const startLearningTask = (task: any) => {
+  const startLearningTask = (task: Task): void => {
     // 检查任务是否有学习资源
     if (task.resources && task.resources.length > 0) {
       // 可以根据资源类型进行不同处理
@@ -296,7 +336,7 @@ export default function PhaseDetailView() {
       
       <div className="space-y-6">
         {phaseTasks.length > 0 ? (
-          phaseTasks.map((dayPlan) => (
+          phaseTasks.map((dayPlan: DailyPlan) => (
             <Card key={dayPlan.day} className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="bg-gray-50 py-4 px-6">
                 <div className="flex justify-between items-center">
@@ -314,7 +354,7 @@ export default function PhaseDetailView() {
                 </div>
                 
                 <div className="space-y-5 mt-4">
-                  {dayPlan.tasks.map((task: any, taskIndex: number) => (
+                  {dayPlan.tasks.map((task: Task, taskIndex: number) => (
                     <div 
                       key={taskIndex} 
                       className={`flex flex-col md:flex-row md:items-start gap-4 p-4 rounded-lg border ${

@@ -14,12 +14,23 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { LoginForm } from './login-form';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/use-auth-store';
 
-export function LoginModal() {
-  const [open, setOpen] = useState(false);
+interface LoginModalProps {
+  defaultOpen?: boolean;
+}
+
+export function LoginModal({ defaultOpen = false }: LoginModalProps) {
+  const [open, setOpen] = useState(defaultOpen);
   const { isAuthenticated } = useAuthStore();
+  
+  // 根据defaultOpen属性和登录状态设置初始打开状态
+  useEffect(() => {
+    if (defaultOpen && !isAuthenticated) {
+      setOpen(true);
+    }
+  }, [defaultOpen, isAuthenticated]);
   
   // 如果已登录，不显示登录按钮
   if (isAuthenticated) {

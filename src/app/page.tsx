@@ -24,6 +24,7 @@ export default function HomePage() {
   const { isAuthenticated, user } = useAuthStore();
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showAutoLogin, setShowAutoLogin] = useState(true);
   
   // 获取用户的备考规划
   useEffect(() => {
@@ -42,6 +43,11 @@ export default function HomePage() {
     };
     
     fetchStudyPlans();
+    
+    // 如果用户已登录，不显示自动登录模态框
+    if (isAuthenticated) {
+      setShowAutoLogin(false);
+    }
   }, [isAuthenticated, user]);
   
   return (
@@ -74,7 +80,7 @@ export default function HomePage() {
                 </div>
               </Link>
             ) : (
-              <LoginModal />
+              <LoginModal defaultOpen={showAutoLogin} />
             )}
             <button className="p-2 text-gray-600">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

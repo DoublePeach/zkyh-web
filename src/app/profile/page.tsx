@@ -9,7 +9,6 @@
 import { useAuthStore } from '@/store/use-auth-store';
 import { useRouter } from 'next/navigation';
 import { 
-  User, 
   Clock, 
   Calendar, 
   BookOpen, 

@@ -13,10 +13,10 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, Book, Clock, BarChart, CalendarDays, Timer, BookOpen, Star, ArrowRight, Trash, ArrowLeft } from 'lucide-react';
+import { Calendar, CalendarDays, BookOpen, Star, ArrowRight, Trash, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
 import { deleteStudyPlan } from '@/lib/db-client';
@@ -32,12 +32,54 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+// 定义类型
+interface Plan {
+  id: number;
+  title: string;
+  totalDays: number;
+  startDate: string | Date;
+  endDate: string | Date;
+  overview?: string;
+  planData?: {
+    overview?: string;
+  };
+}
+
+interface Phase {
+  id: number;
+  name: string;
+  description: string;
+  startDay: number;
+  endDay: number;
+  focusAreas: string[];
+  learningGoals: string[];
+  recommendedResources: string[];
+}
+
+interface Task {
+  title: string;
+  description: string;
+  duration: number;
+  resources: string[];
+  isCompleted: boolean;
+}
+
+interface DailyPlan {
+  day: number;
+  date: string;
+  phaseId: number;
+  title: string;
+  subjects: string[];
+  tasks: Task[];
+  reviewTips?: string;
+}
+
 /**
  * @description 从localStorage获取缓存的规划数据
  * @param {string} planId - 备考规划ID
- * @returns {any|null} - 缓存的数据或null（如果没有缓存或已过期）
+ * @returns {Object|null} - 缓存的数据或null（如果没有缓存或已过期）
  */
-function getCachedPlanData(planId: string) {
+function getCachedPlanData(planId: string): { plan: Plan; phases: Phase[]; dailyPlans: DailyPlan[] } | null {
   if (typeof window === 'undefined') return null;
   
   try {
@@ -65,10 +107,10 @@ function getCachedPlanData(planId: string) {
 /**
  * @description 缓存规划数据到localStorage
  * @param {string} planId - 备考规划ID 
- * @param {any} data - 要缓存的数据
+ * @param {Object} data - 要缓存的数据
  * @returns {void}
  */
-function cachePlanData(planId: string, data: any) {
+function cachePlanData(planId: string, data: { plan: Plan; phases: Phase[]; dailyPlans: DailyPlan[] }): void {
   if (typeof window === 'undefined') return;
   
   try {
@@ -90,13 +132,13 @@ export default function StudyPlanView() {
   const { isAuthenticated } = useAuthStore();
   
   const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<any>({});
-  const [phases, setPhases] = useState<any[]>([]);
-  const [dailyPlans, setDailyPlans] = useState<any[]>([]);
+  const [plan, setPlan] = useState<Plan>({} as Plan);
+  const [phases, setPhases] = useState<Phase[]>([]);
+  const [dailyPlans, setDailyPlans] = useState<DailyPlan[]>([]);
   const [deleting, setDeleting] = useState(false);
   
   // 计算阶段进度
-  const getPhaseProgress = (phaseId: number) => {
+  const getPhaseProgress = (phaseId: number): number => {
     if (!dailyPlans || !dailyPlans.length) return 0;
     
     // 统计已完成的任务数
@@ -110,7 +152,7 @@ export default function StudyPlanView() {
     phasePlans.forEach(day => {
       if (day.tasks && day.tasks.length) {
         totalTasks += day.tasks.length;
-        completedTasks += day.tasks.filter((t: any) => t.isCompleted).length;
+        completedTasks += day.tasks.filter((t) => t.isCompleted).length;
       }
     });
     
@@ -118,7 +160,7 @@ export default function StudyPlanView() {
   };
   
   // 获取备考规划数据
-  const fetchPlanData = async (planId: string) => {
+  const fetchPlanData = async (planId: string): Promise<void> => {
     setLoading(true);
     
     try {
@@ -146,9 +188,9 @@ export default function StudyPlanView() {
       }
       
       // 为每个任务添加完成状态
-      const plansWithStatus = result.data.dailyPlans.map((day: any) => ({
+      const plansWithStatus = result.data.dailyPlans.map((day: DailyPlan) => ({
         ...day,
-        tasks: day.tasks.map((task: any) => ({
+        tasks: day.tasks.map((task) => ({
           ...task,
           isCompleted: false
         }))
@@ -186,38 +228,8 @@ export default function StudyPlanView() {
     }
   }, [params?.id, isAuthenticated, router]);
   
-  // 处理任务完成状态切换
-  const handleTaskComplete = (dayIndex: number, taskIndex: number, phaseId: number) => {
-    // 更新本地状态
-    const updatedPlans = [...dailyPlans];
-    const phaseTasksIndex = dailyPlans.findIndex(day => day.day === dayIndex && day.phaseId === phaseId);
-    
-    if (phaseTasksIndex !== -1 && updatedPlans[phaseTasksIndex].tasks[taskIndex]) {
-      // 切换完成状态
-      updatedPlans[phaseTasksIndex].tasks[taskIndex].isCompleted = !updatedPlans[phaseTasksIndex].tasks[taskIndex].isCompleted;
-      setDailyPlans(updatedPlans);
-      
-      // 更新缓存
-      if (params?.id) {
-        cachePlanData(String(params.id), { plan, phases, dailyPlans: updatedPlans });
-      }
-      
-      // 显示提示
-      toast.success(
-        updatedPlans[phaseTasksIndex].tasks[taskIndex].isCompleted 
-          ? '任务已完成' 
-          : '已取消完成状态'
-      );
-    }
-  };
-
-  // 跳转到阶段详情页面
-  const goToPhaseDetail = (phaseId: number) => {
-    router.push(`/study-plan/${params?.id}/phase/${phaseId}`);
-  };
-  
   // 处理删除规划
-  const handleDeletePlan = async () => {
+  const handleDeletePlan = async (): Promise<void> => {
     if (!params?.id) return;
     
     try {
@@ -238,6 +250,11 @@ export default function StudyPlanView() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  // 跳转到阶段详情页面
+  const goToPhaseDetail = (phaseId: number): void => {
+    router.push(`/study-plan/${params?.id}/phase/${phaseId}`);
   };
   
   if (loading) {
@@ -262,7 +279,7 @@ export default function StudyPlanView() {
   }
   
   // 计算总体学习进度
-  const getTotalProgress = () => {
+  const getTotalProgress = (): number => {
     if (!dailyPlans || !dailyPlans.length) return 0;
     
     let totalTasks = 0;
@@ -271,7 +288,7 @@ export default function StudyPlanView() {
     dailyPlans.forEach(day => {
       if (day.tasks && day.tasks.length) {
         totalTasks += day.tasks.length;
-        completedTasks += day.tasks.filter((t: any) => t.isCompleted).length;
+        completedTasks += day.tasks.filter((t) => t.isCompleted).length;
       }
     });
     

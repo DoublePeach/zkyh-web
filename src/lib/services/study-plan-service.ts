@@ -15,14 +15,9 @@ import { ApiResponse } from './api-service';
 import type { InferSelectModel } from 'drizzle-orm';
 
 type StudyPlan = InferSelectModel<typeof studyPlans>;
-type StudyModule = InferSelectModel<typeof studyModules>;
+// 虽然StudyModule暂时未使用，但在级联删除功能中是必要的
+// type StudyModule = InferSelectModel<typeof studyModules>;
 type DailyTask = InferSelectModel<typeof dailyTasks>;
-
-interface PlanDetailsData {
-    plan: StudyPlan;
-    modules: StudyModule[];
-    tasks: DailyTask[]; 
-}
 
 /**
  * @description 创建用户的备考规划
@@ -102,7 +97,11 @@ export async function getUserStudyPlans(userId: number | string): Promise<ApiRes
  * @param {number|string} planId - 备考规划ID
  * @returns {Promise<ApiResponse<any>>}
  */
-export async function getStudyPlanDetails(planId: number | string): Promise<ApiResponse<any>> {
+export async function getStudyPlanDetails(planId: number | string): Promise<ApiResponse<{
+  plan: StudyPlan;
+  phases: Record<string, unknown>[];
+  dailyPlans: Record<string, unknown>[];
+}>> {
   try {
     const planIdNum = typeof planId === 'string' ? parseInt(planId, 10) : planId;
     
@@ -117,9 +116,9 @@ export async function getStudyPlanDetails(planId: number | string): Promise<ApiR
     const planDetails = plan[0];
     
     // 为了向后兼容，如果没有planData，则返回空数组
-    const planData = planDetails.planData as any || {};
-    const phases = planData.phases || [];
-    const dailyPlans = planData.dailyPlans || [];
+    const planData = planDetails.planData as Record<string, unknown> || {};
+    const phases = (planData.phases as Record<string, unknown>[]) || [];
+    const dailyPlans = (planData.dailyPlans as Record<string, unknown>[]) || [];
     
     return { 
       success: true, 
