@@ -46,7 +46,7 @@ export default async function AdminDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">后台管理仪表盘</h1>
         <p className="text-muted-foreground">
-          管理医卫职称备考助手的所有内容和资源
+          管理智考引航的所有内容和资源
         </p>
       </div>
 

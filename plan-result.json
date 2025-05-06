@@ -1,0 +1,59 @@
+{
+  "overview": "考虑到您有一定的学习基础,建议采用3阶段备考计划,前期以基础巩固为主,中期重点强化薄弱环节,后期模拟冲刺提高。在已有基础上,合理利用工作日和周末时间,制定针对性的每日学习安排,相信您一定能在考试中取得好成绩。",
+  "phases": [
+    {
+      "id": 1,
+      "name": "基础学习阶段",
+      "description": "全面梳理基础知识,巩固已掌握内容,对模糊的知识点进行查漏补缺。",
+      "startDay": 1,
+      "endDay": 0,
+      "focusAreas": [],
+      "learningGoals": [],
+      "recommendedResources": []
+    },
+    {
+      "id": 2,
+      "name": "重点强化阶段",
+      "description": "在基础学习的基础上,针对薄弱环节和重点章节进行强化训练。",
+      "startDay": 1,
+      "endDay": 0,
+      "focusAreas": [],
+      "learningGoals": [],
+      "recommendedResources": []
+    },
+    {
+      "id": 3,
+      "name": "模拟冲刺阶段",
+      "description": "通过模拟考试检验学习成果,提高做题速度和准确率,巩固重点知识。",
+      "startDay": 1,
+      "endDay": 1,
+      "focusAreas": [],
+      "learningGoals": [],
+      "recommendedResources": []
+    }
+  ],
+  "dailyPlans": [
+    {
+      "day": 1,
+      "date": "2025-04-12",
+      "phaseId": 3,
+      "title": "考前最后冲刺",
+      "subjects": [],
+      "tasks": [
+        {
+          "title": "通读全部考点梳理笔记",
+          "description": "快速浏览各科目重点知识笔记,回顾关键内容,加深记忆。",
+          "duration": 60,
+          "resources": []
+        },
+        {
+          "title": "做一套护理综合考前预测卷",
+          "description": "在考试环境下模拟一次考试,检验复习效果,提高做题速度。",
+          "duration": 90,
+          "resources": []
+        }
+      ],
+      "reviewTips": "保持良好心态,早睡早起。考前不要突击学习新内容,轻松复习为主。考试当天带好准考证、身份证等证件,提前到达考场。"
+    }
+  ]
+}

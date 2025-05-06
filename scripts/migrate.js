@@ -9,7 +9,7 @@ const { drizzle } = require('drizzle-orm/postgres-js');
 const postgres = require('postgres');
 
 // 从环境变量获取数据库URL
-const dbUrl = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/zkyh_db1';
+const dbUrl = process.env.DATABASE_URL || 'postgres://postgres@localhost:5432/zkyh_db1';
 
 // 创建PostgreSQL客户端
 const migrationClient = postgres(dbUrl, { max: 1 });

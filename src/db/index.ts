@@ -7,10 +7,10 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 import { schema } from './schema';
+import { DB_CONFIG } from '@/lib/config';
 
 // 数据库连接字符串
-const connectionString = process.env.DATABASE_URL || 'postgres://postgres:@localhost:5432/zkyh_db1';
-// const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:3333@124.220.178.188:5432/zkyh_db';
+const connectionString = process.env.DATABASE_URL || DB_CONFIG.PG_CONNECTION_STRING;
 
 // 创建数据库客户端 - 用于查询
 const queryClient = postgres(connectionString);

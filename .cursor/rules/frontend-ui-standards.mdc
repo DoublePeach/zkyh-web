@@ -7,7 +7,7 @@ alwaysApply: false
 
 ## 设计系统
 
-医卫职称备考助手应用使用统一的设计风格，主要基于 shadcn/ui 组件库，并使用 Tailwind CSS 进行样式定制。
+智考引航应用使用统一的设计风格，主要基于 shadcn/ui 组件库，并使用 Tailwind CSS 进行样式定制。
 
 ### 色彩系统
 

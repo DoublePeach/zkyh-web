@@ -93,7 +93,60 @@ zkyh-web/
 
 应用可以部署到支持NextJS的平台，如Vercel或自托管的服务器。
 
+## 环境变量配置
+
+项目使用环境变量来集中管理敏感配置信息。创建一个`.env`文件（不包含在版本控制中）来存储这些变量。
+
 ```bash
-npm run build
-npm run start
+# 环境设置
+NODE_ENV=development
+
+# 数据库连接字符串 - 使用其中一个
+# 生产环境数据库
+DATABASE_URL=postgresql://postgres:3333@124.220.178.188:5432/zkyh_db
+# 开发环境数据库
+DEV_DATABASE_URL=postgresql://postgres@localhost:5432/zkyh_db1
+
+# 生产环境数据库参数
+PG_HOST=124.220.178.188
+PG_PORT=5432
+PG_USER=postgres
+PG_PASSWORD=3333
+PG_DATABASE=zkyh_db
+
+# 开发环境数据库参数
+PG_DEV_HOST=localhost
+PG_DEV_PORT=5432
+PG_DEV_USER=postgres
+PG_DEV_PASSWORD=
+PG_DEV_DATABASE=zkyh_db1
+
+# AI配置
+OPENROUTER_API_KEY=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
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+DEFAULT_MODEL=anthropic/claude-3-opus:beta
+
+# MCP配置
+SMITHERY_API_KEY=905a415a-4a92-4589-a5cd-640ad2ce3020
+MCP_SERVER_URL=https://server.smithery.ai/@gldc/mcp-postgres
 ```
+
+### 环境变量说明
+
+- `NODE_ENV`: 设置当前环境 (`development` 或 `production`)
+- 数据库连接字符串:
+  - `DATABASE_URL`: 生产环境数据库连接字符串
+  - `DEV_DATABASE_URL`: 开发环境数据库连接字符串
+- 数据库参数:
+  - 生产环境: `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DATABASE`
+  - 开发环境: `PG_DEV_HOST`, `PG_DEV_PORT`, `PG_DEV_USER`, `PG_DEV_PASSWORD`, `PG_DEV_DATABASE`
+
+### 检查数据库配置
+
+可以运行以下命令来验证当前的数据库配置:
+
+```bash
+node scripts/check-db-config.js
+```
+
+## 开发相关

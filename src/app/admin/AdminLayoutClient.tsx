@@ -53,7 +53,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
               <Menu className="h-6 w-6" />
             </Button>
             <Link href="/admin/dashboard" className="text-lg sm:text-xl font-bold">
-              医卫职称备考助手
+              智考引航
             </Link>
             <span className="hidden sm:inline text-gray-500">管理后台</span>
           </div>
@@ -69,7 +69,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
         </div>
       </header>
       <div className="flex flex-1">
-        {/* 桌面端侧边栏 - 只在md以上显示 */}
+        {/* 桌面端侧边栏 - 只在 md 以上显示 */}
         <nav className="hidden md:block w-64 border-r bg-gray-50">
           <div className="flex flex-col p-4">
             {navLinks.map((link) => (
@@ -89,7 +89,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           </div>
         </nav>
         
-        {/* 移动端菜单 - 仅在md以下且菜单打开时显示 */}
+        {/* 移动端菜单 - 仅在 md 以下且菜单打开时显示 */}
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-50 bg-white md:hidden">
             <div className="flex items-center justify-between h-16 border-b px-4">

@@ -36,7 +36,7 @@ export default function HomePage() {
         const plans = await getUserStudyPlans(user.id);
         setStudyPlans(plans);
       } catch (error) {
-        console.error('获取备考规划失败:', error);
+        console.error('获取备考规划失败：', error);
       } finally {
         setLoading(false);
       }
@@ -68,7 +68,7 @@ export default function HomePage() {
                 }}
               />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">医卫职称备考助手</h1>
+            <h1 className="text-xl font-bold text-gray-900">智考引航</h1>
           </div>
           <div className="flex items-center gap-2">
             {/* 添加登录/用户信息 */}

@@ -10,6 +10,7 @@ import { studyModules } from "@/db/schema/studyModules";
 import { dailyTasks } from "@/db/schema/dailyTasks";
 import { SurveyFormData } from "@/types/survey";
 import { generateStudyPlan } from "@/lib/ai/openrouter";
+import { generateStudyPlanFromDatabase } from "@/lib/ai/db-study-plan";
 import { eq, inArray } from "drizzle-orm";
 import { ApiResponse } from './api-service';
 import type { InferSelectModel } from 'drizzle-orm';
@@ -32,10 +33,19 @@ export async function createStudyPlan(userId: number | string, formData: SurveyF
     // 确保userId是数字类型
     const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
     
-    // 1. 调用AI生成备考方案
-    console.log('正在调用AI生成备考方案...');
-    const planData = await generateStudyPlan(formData);
-    console.log('AI成功生成备考方案');
+    // 1. 调用AI基于数据库数据生成备考方案
+    console.log('正在调用AI基于数据库数据生成备考方案...');
+    let planData;
+    try {
+      // 尝试使用基于数据库的方法生成规划
+      planData = await generateStudyPlanFromDatabase(formData);
+      console.log('基于数据库数据成功生成备考方案');
+    } catch (error) {
+      console.error('基于数据库生成备考方案失败，回退到原始方法:', error);
+      // 如果基于数据库的方法失败，回退到原始方法
+      planData = await generateStudyPlan(formData);
+      console.log('使用原始方法成功生成备考方案');
+    }
     
     // 2. 计算开始日期和结束日期
     const startDate = new Date();

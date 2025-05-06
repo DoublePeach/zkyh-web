@@ -5,6 +5,7 @@
  */
 
 import { SurveyFormData } from '@/types/survey';
+import { AI_CONFIG } from '@/lib/config';
 
 // Define a more specific type for the AI response structure if possible
 interface AIResponseData {
@@ -34,9 +35,6 @@ interface AIResponseData {
         reviewTips: string;
     }>;
 }
-
-// OpenRouter API密钥
-const OPENROUTER_API_KEY = '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';
 
 // 应用信息
 // const APP_URL = 'https://medical-cert-exam-prep.vercel.app';
@@ -257,11 +255,11 @@ export async function generateStudyPlan(surveyData: SurveyFormData): Promise<AIR
     console.log('准备发送请求到OpenRouter API...');
     
     // 使用fetch API发送请求，确保正确设置Content-Type头部
-    const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetchWithRetry(AI_CONFIG.OPENROUTER_BASE_URL + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${AI_CONFIG.OPENROUTER_API_KEY}`,
         'HTTP-Referer': APP_URL,
         'X-Title': APP_NAME,
       },

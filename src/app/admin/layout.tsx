@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import AdminLayoutClient from "./AdminLayoutClient";
 
 export const metadata: Metadata = {
-  title: "医卫职称备考助手 - 管理后台",
+  title: "智考引航 - 管理后台",
   description: "管理学习资源和用户数据",
 };
 
