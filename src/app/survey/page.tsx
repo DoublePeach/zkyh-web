@@ -43,7 +43,7 @@ export default function SurveyPage() {
       basic: false, // 基础知识
       related: false, // 相关专业知识
       professional: false, // 专业知识
-      practical: false, // 实践能力
+      practical: false, // 专业实践能力
     },
     
     // 学习基础评估
@@ -411,7 +411,7 @@ export default function SurveyPage() {
                       className="mr-3 h-5 w-5"
                     />
                     <Label htmlFor="subject-practical" className="cursor-pointer">
-                      实践能力
+                      专业实践能力
                     </Label>
                   </div>
                 </div>

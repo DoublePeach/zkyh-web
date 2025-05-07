@@ -25,7 +25,7 @@ export interface SurveyFormData {
     basic: boolean; // 基础知识
     related: boolean; // 相关专业知识
     professional: boolean; // 专业知识
-    practical: boolean; // 实践能力
+    practical: boolean; // 专业实践能力
   };
   
   // 学习基础评估
