@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/use-auth-store';
-import { BookOpen, BarChart, /* Trophy, */ Clock, ChevronRight, ArrowRight, Sparkles, BookMarked, Calendar } from 'lucide-react';
+import { BookOpen, BarChart, /* Trophy, */ Clock, ChevronRight, ArrowRight, Sparkles, BookMarked, Calendar, GraduationCap, Award, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
@@ -19,6 +19,34 @@ import type { InferSelectModel } from 'drizzle-orm';
 import { LoginModal } from '@/components/forms/login-modal';
 
 type StudyPlan = InferSelectModel<typeof studyPlans>;
+
+// 格式化目标职称显示
+const extractTargetTitle = (title: string | undefined | null): string => {
+  if (!title) return '护理职称';
+  
+  // 尝试提取括号中的内容，如"护理职称(初级护师)备考规划"
+  const matchBrackets = title.match(/\((.*?)\)/);
+  if (matchBrackets && matchBrackets[1]) {
+    return matchBrackets[1];
+  }
+  
+  // 尝试提取"职称"后面的内容
+  const matchTitle = title.match(/职称.*?([\u4e00-\u9fa5]{2,4})/);
+  if (matchTitle && matchTitle[1]) {
+    return matchTitle[1];
+  }
+  
+  // 直接寻找常见职称名称
+  const commonTitles = ['初级护师', '主管护师', '副主任护师', '主任护师', '初级医师', '主治医师', '副主任医师', '主任医师'];
+  for (const commonTitle of commonTitles) {
+    if (title.includes(commonTitle)) {
+      return commonTitle;
+    }
+  }
+  
+  // 如果无法提取，返回短一些的标题内容
+  return title.slice(0, 8);
+};
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuthStore();
@@ -57,6 +85,9 @@ export default function HomePage() {
     daysUntilExam: 340   // 距离考试天数
   };
   
+  // 获取当前备考规划（最新的规划）
+  const currentPlan = studyPlans.length > 0 ? studyPlans[0] : null;
+  
   return (
     <main className="min-h-screen bg-gray-50">
       {/* 主要内容 */}
@@ -91,31 +122,65 @@ export default function HomePage() {
             
             {/* 备考概况卡片 - 只在用户已登录且有备考规划时显示 */}
             {isAuthenticated && studyPlans.length > 0 && (
-              <Card className="mb-6 bg-white shadow-sm border-none">
-                <CardContent className="pt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">我的备考概况</h2>
-                    <Link href="/study-plans" className="text-primary text-sm flex items-center">
+              <Card className="mb-6 bg-white shadow border-none overflow-hidden">
+                <CardContent className="p-0">
+                  {/* 卡片顶部标题栏 */}
+                  <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+                    <h2 className="text-xl font-bold flex items-center">
+                      <Award className="h-5 w-5 text-indigo-500 mr-2" />
+                      我的备考概况
+                    </h2>
+                    <Link href="/study-plans" className="text-primary text-sm flex items-center hover:underline">
                       查看全部规划 <ArrowRight className="ml-1 h-4 w-4" />
                     </Link>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div className="text-center">
-                      <p className="text-4xl font-bold text-indigo-600">{studyData.activeStudyPlans}</p>
-                      <p className="text-gray-500 text-sm">活跃备考方案</p>
+                  {/* 卡片主体内容 */}
+                  <div className="p-5">
+                    {/* 学习目标和进度摘要 */}
+                    <div className="flex items-center mb-5 bg-indigo-50 p-3 rounded-lg">
+                      <div className="bg-indigo-100 p-2 rounded-full mr-3">
+                        <GraduationCap className="h-6 w-6 text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">当前备考目标</p>
+                        <p className="font-semibold text-lg text-gray-900">
+                          {extractTargetTitle(currentPlan?.title)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-4xl font-bold text-amber-500">{studyData.completedDays}</p>
-                      <p className="text-gray-500 text-sm">累计备考天数</p>
+                    
+                    {/* 重要指标区域 */}
+                    <div className="grid grid-cols-2 gap-4 mb-5">
+                      <div className="bg-amber-50 p-3 rounded-lg flex items-center">
+                        <div className="bg-amber-100 p-2 rounded-full mr-3">
+                          <Clock className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">累计备考天数</p>
+                          <p className="font-bold text-xl text-amber-600">{studyData.completedDays}天</p>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-blue-50 p-3 rounded-lg flex items-center">
+                        <div className="bg-blue-100 p-2 rounded-full mr-3">
+                          <Target className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">距离考试还有</p>
+                          <p className="font-bold text-xl text-blue-600">{studyData.daysUntilExam}天</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-4xl font-bold text-blue-500">{studyData.daysUntilExam}</p>
-                      <p className="text-gray-500 text-sm">距考试天数</p>
-                    </div>
+                    
+                    {/* 继续学习按钮 */}
+                    <Link href={currentPlan ? `/study-plan/${currentPlan.id}/phase/1` : "/study-plans"}>
+                      <Button className="w-full gap-2 py-5" size="lg">
+                        <BookOpen className="h-5 w-5" />
+                        继续学习
+                      </Button>
+                    </Link>
                   </div>
-                  
-                  <Button className="w-full" variant="outline">继续学习</Button>
                 </CardContent>
               </Card>
             )}

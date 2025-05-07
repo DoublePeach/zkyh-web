@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/use-auth-store';
 import { getUserStudyPlans, deleteStudyPlan } from '@/lib/db-client';
-import { CalendarDays, ChevronRight, Calendar, Trash, Plus, BookOpen, PenToolIcon, ArrowLeft } from 'lucide-react';
+import { CalendarDays, ChevronRight, Calendar, Trash, Plus, BookOpen, PenToolIcon, ArrowLeft, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import type { studyPlans } from '@/db/schema';
 import type { InferSelectModel } from 'drizzle-orm';
@@ -50,7 +50,13 @@ export default function StudyPlansPage() {
     try {
       setLoading(true);
       const plans = await getUserStudyPlans(user.id);
-      setStudyPlans(plans);
+      // 按创建时间降序排序
+      const sortedPlans = plans.sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.startDate);
+        const dateB = new Date(b.createdAt || b.startDate);
+        return dateB.getTime() - dateA.getTime();
+      });
+      setStudyPlans(sortedPlans);
     } catch (error) {
       console.error('获取备考规划失败:', error);
       toast.error('获取备考规划失败，请稍后重试');
@@ -109,6 +115,16 @@ export default function StudyPlansPage() {
     return 1;
   };
 
+  // 格式化创建时间
+  const formatCreationDate = (date: Date | string) => {
+    const createDate = new Date(date);
+    return `${createDate.getFullYear()}年${createDate.getMonth() + 1}月${createDate.getDate()}日`;
+  };
+
+  // 分离当前规划和历史规划
+  const currentPlan = studyPlans.length > 0 ? studyPlans[0] : null;
+  const historyPlans = studyPlans.slice(1);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 顶部导航栏 */}
@@ -141,11 +157,12 @@ export default function StudyPlansPage() {
             </div>
           </div>
         ) : studyPlans.length > 0 ? (
-          // 规划列表
-          <div className="grid gap-6">
-            {studyPlans.map((plan) => (
+          <div className="space-y-10">
+            {/* 当前备考规划 */}
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">当前备考规划</h2>
               <Card 
-                key={plan.id}
+                key={currentPlan?.id}
                 className="overflow-hidden bg-white hover:shadow-md transition-shadow border border-gray-100"
               >
                 <CardContent className="p-0">
@@ -153,36 +170,39 @@ export default function StudyPlansPage() {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <h2 className="text-xl font-bold text-gray-900">{plan.title}</h2>
-                          {plan.isActive && (
-                            <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
-                              进行中
-                            </Badge>
-                          )}
+                          <h2 className="text-xl font-bold text-gray-900">{currentPlan?.title}</h2>
+                          <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
+                            进行中
+                          </Badge>
                         </div>
                         
                         <div className="text-sm text-gray-500">
                           <span className="inline-flex items-center mr-4">
                             <CalendarDays className="h-4 w-4 mr-1" />
-                            {new Date(plan.startDate).toLocaleDateString()} 至 {new Date(plan.endDate).toLocaleDateString()}
+                            {new Date(currentPlan?.startDate || '').toLocaleDateString()} 至 {new Date(currentPlan?.endDate || '').toLocaleDateString()}
                           </span>
-                          {plan.examYear && (
+                          {currentPlan?.examYear && (
                             <span className="inline-flex items-center">
                               <Calendar className="h-4 w-4 mr-1" />
-                              {getExamYearDisplay(plan)}
+                              {getExamYearDisplay(currentPlan)}
                             </span>
                           )}
+                        </div>
+                        
+                        <div className="text-xs text-gray-500 mt-2 flex items-center">
+                          <Clock className="h-3.5 w-3.5 mr-1" />
+                          您在 {formatCreationDate(currentPlan?.createdAt || currentPlan?.startDate || new Date())} 创建了此备考规划
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-3">
                         <div className="px-4 py-2 bg-blue-50 rounded-md">
                           <p className="text-sm text-gray-500">总天数</p>
-                          <p className="font-semibold text-lg">{plan.totalDays}天</p>
+                          <p className="font-semibold text-lg">{currentPlan?.totalDays}天</p>
                         </div>
                         <div className="px-4 py-2 bg-purple-50 rounded-md">
                           <p className="text-sm text-gray-500">剩余天数</p>
-                          <p className="font-semibold text-lg">{getDaysRemaining(plan.endDate)}天</p>
+                          <p className="font-semibold text-lg">{getDaysRemaining(currentPlan?.endDate || new Date())}天</p>
                         </div>
                       </div>
                     </div>
@@ -197,7 +217,7 @@ export default function StudyPlansPage() {
                           variant="ghost" 
                           size="sm"
                           className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          disabled={deletingPlanId === plan.id}
+                          disabled={deletingPlanId === currentPlan?.id}
                         >
                           <Trash className="h-4 w-4 mr-1" />
                           删除规划
@@ -214,7 +234,7 @@ export default function StudyPlansPage() {
                           <AlertDialogCancel>取消</AlertDialogCancel>
                           <AlertDialogAction
                             className="bg-red-500 hover:bg-red-600"
-                            onClick={() => handleDeletePlan(plan.id)}
+                            onClick={() => currentPlan && handleDeletePlan(currentPlan.id)}
                           >
                             确定删除
                           </AlertDialogAction>
@@ -224,7 +244,7 @@ export default function StudyPlansPage() {
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <Link href={`/study-plan/${plan.id}`}>
+                    <Link href={`/study-plan/${currentPlan?.id}`}>
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -235,7 +255,7 @@ export default function StudyPlansPage() {
                       </Button>
                     </Link>
                     
-                    <Link href={`/study-plan/${plan.id}/phase/${getFirstPhaseId(plan)}`}>
+                    <Link href={`/study-plan/${currentPlan?.id}/phase/${currentPlan ? getFirstPhaseId(currentPlan) : 1}`}>
                       <Button
                         size="sm"
                         className="flex items-center gap-1"
@@ -248,7 +268,110 @@ export default function StudyPlansPage() {
                   </div>
                 </CardFooter>
               </Card>
-            ))}
+            </div>
+            
+            {/* 历史规划记录 */}
+            {historyPlans.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">历史规划记录</h2>
+                <div className="grid gap-6">
+                  {historyPlans.map((plan) => (
+                    <Card 
+                      key={plan.id}
+                      className="overflow-hidden bg-white hover:shadow-md transition-shadow border border-gray-100"
+                    >
+                      <CardContent className="p-0">
+                        <div className="p-6">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h2 className="text-xl font-bold text-gray-900">{plan.title}</h2>
+                                <Badge variant="outline" className="bg-gray-100 text-gray-600 hover:bg-gray-200">
+                                  已归档
+                                </Badge>
+                              </div>
+                              
+                              <div className="text-sm text-gray-500">
+                                <span className="inline-flex items-center mr-4">
+                                  <CalendarDays className="h-4 w-4 mr-1" />
+                                  {new Date(plan.startDate).toLocaleDateString()} 至 {new Date(plan.endDate).toLocaleDateString()}
+                                </span>
+                                {plan.examYear && (
+                                  <span className="inline-flex items-center">
+                                    <Calendar className="h-4 w-4 mr-1" />
+                                    {getExamYearDisplay(plan)}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="text-xs text-gray-500 mt-2 flex items-center">
+                                <Clock className="h-3.5 w-3.5 mr-1" />
+                                您在 {formatCreationDate(plan.createdAt || plan.startDate)} 创建了此备考规划
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              <div className="px-4 py-2 bg-blue-50 rounded-md">
+                                <p className="text-sm text-gray-500">总天数</p>
+                                <p className="font-semibold text-lg">{plan.totalDays}天</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                      
+                      <CardFooter className="bg-gray-50 p-4 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                disabled={deletingPlanId === plan.id}
+                              >
+                                <Trash className="h-4 w-4 mr-1" />
+                                删除规划
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>确定要删除这个备考规划吗？</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  此操作将永久删除这个备考规划及其所有数据，无法恢复。
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-red-500 hover:bg-red-600"
+                                  onClick={() => handleDeletePlan(plan.id)}
+                                >
+                                  确定删除
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <Link href={`/study-plan/${plan.id}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex items-center gap-1"
+                            >
+                              <BookOpen className="h-4 w-4" />
+                              查看计划
+                            </Button>
+                          </Link>
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           // 空状态
