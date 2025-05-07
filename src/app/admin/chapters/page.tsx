@@ -6,7 +6,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Select,
@@ -15,20 +15,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getAllChapters, deleteChapter, Chapter } from "@/lib/services/chapter-service";
 import { getAllNursingDisciplines, NursingDiscipline } from "@/lib/services/nursing-discipline-service";
 
 export default function ChaptersPage() {
+  // 数据状态
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [disciplines, setDisciplines] = useState<NursingDiscipline[]>([]);
+  
+  // 筛选状态
   const [selectedDiscipline, setSelectedDiscipline] = useState<string>("all");
+  
+  // 加载状态
   const [isLoading, setIsLoading] = useState(true);
   const [isDisciplinesLoading, setIsDisciplinesLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  
+  // 调试计数器，强制刷新渲染
+  const [renderCount, setRenderCount] = useState(0);
+
+  // 计算总页数和当前页显示的章节
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(chapters.length / itemsPerPage));
+  }, [chapters.length, itemsPerPage]);
+
+  const currentPageItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return chapters.slice(startIndex, startIndex + itemsPerPage);
+  }, [chapters, currentPage, itemsPerPage, renderCount]); // 添加renderCount作为依赖项
 
   // 加载所有护理学科
   useEffect(() => {
     async function loadDisciplines() {
+      setIsDisciplinesLoading(true);
       try {
         const response = await getAllNursingDisciplines();
         if (response.success && response.data) {
@@ -43,12 +68,12 @@ export default function ChaptersPage() {
         setIsDisciplinesLoading(false);
       }
     }
-
+    
     loadDisciplines();
   }, []);
 
-  // 加载章节数据 (Wrap in useCallback)
-  const loadChapters = useCallback(async () => {
+  // 加载章节数据
+  const fetchChapters = useCallback(async () => {
     setIsLoading(true);
     try {
       const disciplineId = selectedDiscipline !== "all" ? parseInt(selectedDiscipline) : undefined;
@@ -56,36 +81,47 @@ export default function ChaptersPage() {
       
       if (response.success && response.data) {
         setChapters(response.data);
+        
+        // 如果当前页超出范围，重置为第一页
+        const newTotalPages = Math.ceil(response.data.length / itemsPerPage);
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+          setCurrentPage(1);
+        }
+        
+        // 强制重新渲染
+        setRenderCount(prev => prev + 1);
       } else {
         toast.error("获取章节数据失败: " + (response.error || "未知错误"));
+        setChapters([]);
       }
     } catch (error) {
       console.error("获取章节数据出错:", error);
       toast.error("获取章节数据失败");
+      setChapters([]);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedDiscipline]);
+  }, [selectedDiscipline, currentPage, itemsPerPage]);
 
   // 当选择的学科变化时，重新加载章节数据
   useEffect(() => {
     if (!isDisciplinesLoading) {
-      loadChapters();
+      fetchChapters();
     }
-  }, [isDisciplinesLoading, loadChapters]);
+  }, [isDisciplinesLoading, fetchChapters]);
 
-  // 删除章节 (Wrap in useCallback)
+  // 删除章节
   const handleDelete = useCallback(async (id: number) => {
     if (!confirm("确定要删除此章节吗？此操作不可恢复，且会删除与此章节关联的所有知识点。")) {
       return;
     }
-
+    
     setIsDeleting(true);
     try {
       const response = await deleteChapter(id);
       if (response.success) {
         toast.success("章节删除成功");
-        loadChapters();
+        fetchChapters(); // 删除后重新加载数据
       } else {
         toast.error("删除章节失败: " + (response.error || "未知错误"));
       }
@@ -95,7 +131,20 @@ export default function ChaptersPage() {
     } finally {
       setIsDeleting(false);
     }
-  }, [loadChapters]);
+  }, [fetchChapters]);
+
+  // 分页控制
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // 处理学科选择变化
+  const handleDisciplineChange = (value: string) => {
+    setSelectedDiscipline(value);
+    setCurrentPage(1); // 重置到第一页
+  };
 
   return (
     <div className="space-y-6">
@@ -123,7 +172,7 @@ export default function ChaptersPage() {
         </label>
         <Select 
           value={selectedDiscipline} 
-          onValueChange={setSelectedDiscipline}
+          onValueChange={handleDisciplineChange}
           disabled={isLoading || isDisciplinesLoading}
         >
           <SelectTrigger id="discipline-select" className="w-[300px]">
@@ -143,11 +192,16 @@ export default function ChaptersPage() {
         </Select>
       </div>
 
+      {/* 调试信息 */}
+      <div className="text-xs text-gray-500 mb-2">
+        总数据: {chapters.length} | 总页数: {totalPages} | 当前页: {currentPage} | 渲染次数: {renderCount}
+      </div>
+
       <div className="rounded-md border">
         <table className="w-full divide-y divide-border">
           <thead>
             <tr className="bg-muted/50">
-              <th className="px-4 py-3 text-left text-sm font-medium">ID</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">序号</th>
               <th className="px-4 py-3 text-left text-sm font-medium">章节名称</th>
               <th className="px-4 py-3 text-left text-sm font-medium">描述</th>
               <th className="px-4 py-3 text-left text-sm font-medium">所属学科</th>
@@ -162,16 +216,16 @@ export default function ChaptersPage() {
                   加载中...
                 </td>
               </tr>
-            ) : chapters.length === 0 ? (
+            ) : currentPageItems.length === 0 ? (
               <tr>
                 <td className="px-4 py-3 text-sm" colSpan={6}>
                   {selectedDiscipline !== "all" ? "该学科下暂无章节数据，请添加" : "暂无章节数据，请选择学科并添加"}
                 </td>
               </tr>
             ) : (
-              chapters.map((chapter) => (
+              currentPageItems.map((chapter, index) => (
                 <tr key={chapter.id}>
-                  <td className="px-4 py-3 text-sm">{chapter.id}</td>
+                  <td className="px-4 py-3 text-sm">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                   <td className="px-4 py-3 text-sm font-medium">
                     {chapter.name}
                   </td>
@@ -209,6 +263,30 @@ export default function ChaptersPage() {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1 || isLoading}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm">
+            第 {currentPage} 页 / 共 {totalPages} 页
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages || isLoading}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 } 

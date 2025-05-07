@@ -160,7 +160,23 @@ export async function POST(req: Request) {
       updatedAt: now,
     };
     
-    const result = await db.insert(knowledgePoints).values(dataToInsert).returning();
+    let result;
+    try {
+      // 直接尝试插入，让数据库自动生成ID
+      result = await db.insert(knowledgePoints).values(dataToInsert).returning();
+    } catch (error: any) {
+      // 检查是否为主键冲突错误
+      if (error.code === '23505' && error.constraint_name === 'knowledge_points_pkey') {
+        console.log('发生主键冲突，尝试重置序列并重试...');
+        // 重置序列并重试
+        await resetSequence();
+        // 再次尝试插入
+        result = await db.insert(knowledgePoints).values(dataToInsert).returning();
+      } else {
+        // 其他错误，直接抛出
+        throw error;
+      }
+    }
 
     const newKnowledgePoint = result[0];
 
@@ -203,8 +219,32 @@ export async function POST(req: Request) {
       );
     }
     return NextResponse.json(
-      { success: false, message: "创建知识点失败" },
+      { success: false, message: "创建知识点失败", error: String(error) },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * 重置知识点表的ID序列
+ */
+async function resetSequence() {
+  try {
+    // 查询最大ID
+    const maxIdResult = await db.execute(
+      `SELECT MAX(id) as max_id FROM knowledge_points`
+    );
+    
+    const maxId = Number(maxIdResult[0]?.max_id || 0);
+    console.log(`知识点表当前最大ID: ${maxId}`);
+    
+    // 重置序列到最大ID+1
+    await db.execute(
+      `ALTER SEQUENCE knowledge_points_id_seq RESTART WITH ${maxId + 1}`
+    );
+    console.log(`已重置序列至 ${maxId + 1}`);
+  } catch (error) {
+    console.error('重置序列失败:', error);
+    throw error;
   }
 } 

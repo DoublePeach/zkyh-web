@@ -13,7 +13,10 @@
     "db:migrate:sql": "tsx src/db/apply-migration.ts",
     "db:optimize": "tsx src/db/optimize-study-plans.ts",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "db:reset-sequence": "tsx src/db/reset-sequences.ts",
+    "setup-env": "node scripts/setup-env.js",
+    "db:check": "node scripts/check-db-connection.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 环境变量文件
+.env
+.env.local
+.env.development
+.env.production
