@@ -70,11 +70,12 @@ export default function Onboarding() {
     setIsMounted(true);
 
     // 阻止页面滚动
+    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     
     // 清除函数
     return () => {
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = originalOverflow || 'auto';
     };
   }, []);
 
