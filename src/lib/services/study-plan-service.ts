@@ -9,8 +9,7 @@ import { studyPlans } from "@/db/schema/studyPlans";
 import { studyModules } from "@/db/schema/studyModules";
 import { dailyTasks } from "@/db/schema/dailyTasks";
 import { SurveyFormData } from "@/types/survey";
-import { generateStudyPlan } from "@/lib/ai/openrouter";
-import { generateStudyPlanFromDatabase } from "@/lib/ai/db-study-plan";
+import { generateStudyPlanFromDatabase, generateLocalStudyPlan } from "@/lib/ai";
 import { eq, inArray } from "drizzle-orm";
 import { ApiResponse } from './api-service';
 import type { InferSelectModel } from 'drizzle-orm';
@@ -41,10 +40,16 @@ export async function createStudyPlan(userId: number | string, formData: SurveyF
       planData = await generateStudyPlanFromDatabase(formData);
       console.log('基于数据库数据成功生成备考方案');
     } catch (error) {
-      console.error('基于数据库生成备考方案失败，回退到原始方法:', error);
-      // 如果基于数据库的方法失败，回退到原始方法
-      planData = await generateStudyPlan(formData);
-      console.log('使用原始方法成功生成备考方案');
+      console.error('基于数据库生成备考方案失败，回退到本地生成方案:', error);
+      // 如果基于数据库的方法失败，回退到本地生成方案
+      const examYear = parseInt(formData.examYear);
+      const examDate = new Date(examYear, 3, 13); // 月份从0开始，所以4月是3
+      const today = new Date();
+      const daysUntilExam = Math.max(1, Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+      
+      console.log('将使用本地生成方案');
+      planData = generateLocalStudyPlan(formData, null, daysUntilExam);
+      console.log('使用本地方案成功生成备考方案');
     }
     
     // 2. 计算开始日期和结束日期

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateStudyPlanFromDatabase } from '@/lib/ai/db-study-plan';
+import { generateStudyPlanFromDatabase } from '@/lib/ai';
 import { DB_CONFIG } from '@/lib/config';
 import * as directDb from '@/lib/direct-db';
 import * as mcpDb from '@/lib/ai/postgres-mcp';

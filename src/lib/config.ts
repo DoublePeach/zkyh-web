@@ -42,22 +42,55 @@ export const DB_CONFIG = {
 
 // AI 模型配置
 export const AI_CONFIG = {
-  // OpenRouter API 密钥 (使用环境变量，此处不再提供默认值)
-  OPENROUTER_API_KEY: getEnv('OPENROUTER_API_KEY'),
+  // 环境变量获取（支持多种格式）
+  get OPENROUTER_API_KEY(): string {
+    return getEnv('OPENROUTER_API_KEY') || getEnv('NEXT_PUBLIC_OPENROUTER_API_KEY') || '';
+  },
+  
   // OpenRouter API 基础 URL
-  OPENROUTER_BASE_URL: getEnv('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
-  // Deepseek API 密钥
-  DEEPSEEK_API_KEY: getEnv('DEEPSEEK_API_KEY'),
+  get OPENROUTER_BASE_URL(): string {
+    return getEnv('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1') || 
+           getEnv('NEXT_PUBLIC_OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1');
+  },
+  
+  // Deepseek API 密钥（支持多种格式）
+  get DEEPSEEK_API_KEY(): string {
+    return getEnv('DEEPSEEK_API_KEY') || 
+           getEnv('NEXT_PUBLIC_DEEPSEEK_API_KEY') || 
+           // 硬编码备用密钥（仅开发环境使用）
+           (isDev ? 'sk-ed222c4e2fcc4a64af6b3692e29cf443' : '');
+  },
+  
   // Deepseek API 基础 URL
-  DEEPSEEK_BASE_URL: getEnv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1'),
+  get DEEPSEEK_BASE_URL(): string {
+    return getEnv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1') || 
+           getEnv('NEXT_PUBLIC_DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1');
+  },
+  
   // 默认模型供应商 (deepseek 或 openrouter)
-  DEFAULT_PROVIDER: getEnv('DEFAULT_PROVIDER', 'deepseek'),
+  get DEFAULT_PROVIDER(): string {
+    return getEnv('DEFAULT_PROVIDER', 'deepseek') || 
+           getEnv('NEXT_PUBLIC_DEFAULT_PROVIDER', 'deepseek');
+  },
+  
   // 默认模型
-  DEFAULT_MODEL: getEnv('DEFAULT_MODEL', 'deepseek-chat'),
+  get DEFAULT_MODEL(): string {
+    return getEnv('DEFAULT_MODEL', 'deepseek-chat') || 
+           getEnv('NEXT_PUBLIC_DEFAULT_MODEL', 'deepseek-chat');
+  },
+  
+  // 调试模式
+  get DEBUG(): boolean {
+    return getEnv('AI_DEBUG', 'false') === 'true' || 
+           getEnv('NEXT_PUBLIC_AI_DEBUG', 'false') === 'true' || 
+           isDev;
+  },
+  
   // 获取当前API密钥
   get CURRENT_API_KEY(): string {
     return this.DEFAULT_PROVIDER === 'deepseek' ? this.DEEPSEEK_API_KEY : this.OPENROUTER_API_KEY;
   },
+  
   // 获取当前API基础URL
   get CURRENT_BASE_URL(): string {
     return this.DEFAULT_PROVIDER === 'deepseek' ? this.DEEPSEEK_BASE_URL : this.OPENROUTER_BASE_URL;

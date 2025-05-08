@@ -171,11 +171,15 @@ export async function callDeepSeekAPI(
 ): Promise<AIResponseData> {
   try {
     console.log('准备调用DeepSeek API...');
-    console.log('使用模型:', model);
+    
+    // 使用正确的模型名称 - DeepSeek Chat模型名称格式
+    // 可用模型包括：deepseek-chat, deepseek-coder等
+    const actualModel = model === 'deepseek-chat' ? 'deepseek-chat' : model;
+    console.log('使用模型:', actualModel);
     
     // 准备请求体
     const requestBody = {
-      model,
+      model: actualModel,
       messages: [
         {
           role: 'user',
@@ -192,9 +196,31 @@ export async function callDeepSeekAPI(
       'Authorization': `Bearer ${AI_CONFIG.DEEPSEEK_API_KEY}`
     };
     
+    // 打印API配置信息 (脱敏API密钥)
+    const apiKey = AI_CONFIG.DEEPSEEK_API_KEY || '';
+    const maskedKey = apiKey.length > 10 ? 
+      apiKey.substring(0, 10) + '***' : 
+      '未设置';
+    
+    console.log('使用Deepseek API密钥:', maskedKey);
+    console.log('使用Deepseek API URL:', AI_CONFIG.DEEPSEEK_BASE_URL);
+    
+    // 固定使用官方的API URL格式
+    // DeepSeek的标准端点为 https://api.deepseek.com/v1/chat/completions
+    const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+    
+    console.log('开始API请求...');
+    console.log('API请求配置 (部分):', JSON.stringify({
+      model: actualModel,
+      temperature,
+      max_tokens: maxTokens,
+      message_prompt_length_chars: prompt.length
+    }));
+    
     // 发送请求
+    console.log('执行 Deepseek API 调用...');
     const response = await fetchWithRetry(
-      AI_CONFIG.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1/chat/completions',
+      apiUrl,
       {
         method: 'POST',
         headers,
@@ -203,8 +229,11 @@ export async function callDeepSeekAPI(
     );
     
     // 检查响应状态
+    console.log('API响应状态码:', response.status);
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('API返回错误状态码:', response.status);
+      console.error('错误详情:', errorText);
       throw new Error(`DeepSeek API请求失败: ${response.status} ${response.statusText}, ${errorText}`);
     }
     
@@ -238,28 +267,61 @@ export async function callDeepSeekAPI(
  * @returns {Promise<AIResponseData>} - AI响应数据
  */
 export async function callAIAPI(prompt: string): Promise<AIResponseData> {
+  // 打印API配置信息
+  console.log('API配置信息:');
+  console.log('- DEFAULT_PROVIDER:', AI_CONFIG.DEFAULT_PROVIDER);
+  console.log('- DEFAULT_MODEL:', AI_CONFIG.DEFAULT_MODEL);
+  console.log('- CURRENT_API_KEY (前10位):', AI_CONFIG.CURRENT_API_KEY?.substring(0, 10) + '***');
+  console.log('- CURRENT_BASE_URL:', AI_CONFIG.CURRENT_BASE_URL);
+  console.log('- DEEPSEEK_API_KEY (前10位):', AI_CONFIG.DEEPSEEK_API_KEY?.substring(0, 10) + '***');
+  console.log('- DEEPSEEK_BASE_URL:', AI_CONFIG.DEEPSEEK_BASE_URL);
+  
   // 根据默认提供者选择使用哪个API
   const provider = AI_CONFIG.DEFAULT_PROVIDER || 'deepseek';
   
   try {
+    console.log('开始调用AI生成备考规划...');
+    
     if (provider === 'deepseek') {
-      return await callDeepSeekAPI(prompt);
+      try {
+        console.log('使用Deepseek API密钥:', AI_CONFIG.DEEPSEEK_API_KEY?.substring(0, 10) + '***');
+        console.log('使用Deepseek API URL:', AI_CONFIG.DEEPSEEK_BASE_URL);
+        return await callDeepSeekAPI(prompt);
+      } catch (deepseekError) {
+        console.error('Deepseek API调用失败:', deepseekError);
+        console.log('尝试使用OpenAI API...');
+        
+        if (AI_CONFIG.OPENROUTER_API_KEY) {
+          return await callOpenAIAPI(prompt);
+        } else {
+          console.error('OpenAI API密钥未设置，无法进行备选调用');
+          throw deepseekError;
+        }
+      }
     } else {
-      return await callOpenAIAPI(prompt);
+      try {
+        console.log('使用OpenAI API...');
+        return await callOpenAIAPI(prompt);
+      } catch (openaiError) {
+        console.error('OpenAI API调用失败:', openaiError);
+        console.log('尝试使用Deepseek API...');
+        
+        if (AI_CONFIG.DEEPSEEK_API_KEY) {
+          return await callDeepSeekAPI(prompt);
+        } else {
+          console.error('Deepseek API密钥未设置，无法进行备选调用');
+          throw openaiError;
+        }
+      }
     }
   } catch (error) {
-    // 如果默认提供者失败，尝试使用另一个提供者
-    console.error(`${provider} API调用失败，尝试使用备选方案...`);
+    // 记录详细的错误信息
+    console.error('API调用失败，详细错误:');
+    console.error('错误类型:', typeof error);
+    console.error('错误名称:', error instanceof Error ? error.name : 'Unknown');
+    console.error('错误消息:', error instanceof Error ? error.message : String(error));
+    console.error('错误堆栈:', error instanceof Error ? error.stack : 'No stack trace');
     
-    try {
-      if (provider === 'deepseek') {
-        return await callOpenAIAPI(prompt);
-      } else {
-        return await callDeepSeekAPI(prompt);
-      }
-    } catch (fallbackError) {
-      console.error('备选方案也失败:', fallbackError);
-      throw new Error('所有AI API调用方式均失败');
-    }
+    throw new Error(`所有AI API调用均失败: ${error instanceof Error ? error.message : String(error)}`);
   }
 } 
