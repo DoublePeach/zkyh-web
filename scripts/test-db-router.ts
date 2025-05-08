@@ -2,9 +2,10 @@
  * @description 测试基于数据库生成备考规划的脚本
  * @author 郝桃桃
  * @date 2024-08-05
+ * @update 2024-10-01 更新为使用最新的study-plan-service
  */
 
-import { generateStudyPlanFromDatabase } from '../src/lib/ai/db-router';
+import { generateStudyPlanFromDatabase } from '../src/lib/ai/study-plan-service';
 import { SurveyFormData } from '../src/types/survey';
 
 // 测试用的表单数据

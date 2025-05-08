@@ -16,7 +16,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, CalendarDays, BookOpen, Star, ArrowRight, Trash, ArrowLeft } from 'lucide-react';
+import { Calendar, CalendarDays, BookOpen, Star, ArrowRight, Trash, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
 import { deleteStudyPlan } from '@/lib/db-client';
@@ -136,6 +136,7 @@ export default function StudyPlanView() {
   const [phases, setPhases] = useState<Phase[]>([]);
   const [dailyPlans, setDailyPlans] = useState<DailyPlan[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [expandedSection, setExpandedSection] = useState<number | null>(1);
   
   // 计算阶段进度
   const getPhaseProgress = (phaseId: number): number => {
@@ -257,6 +258,15 @@ export default function StudyPlanView() {
     router.push(`/study-plan/${params?.id}/phase/${phaseId}`);
   };
   
+  // 切换展开/折叠状态
+  const toggleSection = (sectionId: number) => {
+    if (expandedSection === sectionId) {
+      setExpandedSection(null);
+    } else {
+      setExpandedSection(sectionId);
+    }
+  };
+  
   if (loading) {
     return (
       <div className="container flex items-center justify-center min-h-screen">
@@ -296,10 +306,10 @@ export default function StudyPlanView() {
   };
   
   return (
-    <div className="container max-w-5xl mx-auto py-8 px-4">
-      {/* 页面标题与操作 */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50">
+      {/* 顶部导航栏 */}
+      <div className="bg-white p-4 shadow-sm">
+        <div className="container mx-auto flex items-center">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -308,170 +318,222 @@ export default function StudyPlanView() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{plan.title}</h1>
-            <p className="text-gray-500 mt-2">距离考试还有 <span className="font-medium text-primary">{plan.totalDays}</span> 天</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="text-red-500 hover:text-red-700 hover:bg-red-50 mr-2"
-                disabled={deleting}
-              >
-                <Trash className="h-4 w-4 mr-1" />
-                删除规划
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>确定要删除这个备考规划吗？</AlertDialogTitle>
-                <AlertDialogDescription>
-                  此操作将永久删除这个备考规划及其所有数据，无法恢复。
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>取消</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-red-500 hover:bg-red-600"
-                  onClick={handleDeletePlan}
+          <span className="text-xl font-semibold">备考规划</span>
+          <div className="ml-auto">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  disabled={deleting}
                 >
-                  确定删除
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          
-          <Button variant="outline" className="flex items-center gap-2" onClick={() => fetchPlanData(String(params.id))}>
-            <Calendar className="w-4 h-4" />
-            <span>刷新计划</span>
-          </Button>
+                  <Trash className="h-4 w-4 mr-1" />
+                  删除规划
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>确定要删除这个备考规划吗？</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    此操作将永久删除这个备考规划及其所有数据，无法恢复。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-500 hover:bg-red-600"
+                    onClick={handleDeletePlan}
+                  >
+                    确定删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
       
-      {/* 学习进度概览卡片 */}
-      <Card className="mb-8 border-none shadow-md bg-gradient-to-r from-blue-50 to-indigo-50">
-        <CardContent className="pt-6">
-          <div className="grid gap-6 md:grid-cols-3">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-sm">
-                <CalendarDays className="h-4 w-4 text-primary" />
-                <span className="font-medium">总学习天数</span>
-              </div>
-              <p className="text-2xl font-bold">{plan.totalDays}天</p>
+      <div className="container mx-auto py-6 px-4 max-w-3xl">
+        {/* 考情速递 */}
+        <div className="mb-6">
+          <div 
+            className="flex justify-between items-center mb-2 px-4 py-2 bg-white rounded-lg shadow-sm cursor-pointer"
+            onClick={() => toggleSection(1)}
+          >
+            <div className="flex items-center">
+              <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
+              <h2 className="font-semibold text-lg">考情速递</h2>
             </div>
-            
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-sm">
-                <BookOpen className="h-4 w-4 text-primary" />
-                <span className="font-medium">学习进度</span>
-              </div>
-              <div className="space-y-2">
-                <Progress value={getTotalProgress()} className="h-2" />
-                <p className="text-sm text-gray-500">{getTotalProgress()}% 完成</p>
-              </div>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-sm">
-                <Star className="h-4 w-4 text-primary" />
-                <span className="font-medium">学习时间</span>
-              </div>
-              <p className="text-sm">
-                {new Date(plan.startDate).toLocaleDateString()} 至 {new Date(plan.endDate).toLocaleDateString()}
-              </p>
-            </div>
+            {expandedSection === 1 ? (
+              <ChevronUp className="h-5 w-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-gray-500" />
+            )}
           </div>
-        </CardContent>
-      </Card>
-      
-      {/* 总体概述 */}
-      <Card className="mb-8 border border-gray-100 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl">备考方案总览</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-700 whitespace-pre-wrap">{plan.planData?.overview || plan.overview || "暂无备考方案总览信息"}</p>
-        </CardContent>
-      </Card>
-      
-      {/* 三阶段学习计划 */}
-      <h2 className="text-2xl font-bold mb-4 text-gray-900">学习阶段</h2>
-      <div className="space-y-6 mb-8">
-        {phases.map((phase) => (
-          <Card key={phase.id} className={`border-l-4 hover:shadow-md transition-shadow ${
-            phase.id === 1 ? 'border-l-blue-500' : 
-            phase.id === 2 ? 'border-l-green-500' : 
-            'border-l-purple-500'
-          }`}>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-lg">{phase.name}</CardTitle>
-                <div className="text-sm text-gray-500">第{phase.startDay}-{phase.endDay}天</div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4">
-                <p className="text-gray-700 text-sm mb-2">{phase.description}</p>
-                <div className="flex justify-between items-center text-sm">
-                  <span>完成进度</span>
-                  <span>{getPhaseProgress(phase.id)}%</span>
-                </div>
-                <Progress value={getPhaseProgress(phase.id)} className="h-2 mt-1" />
-              </div>
-              
-              <div className="grid md:grid-cols-3 gap-4 my-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-2">学习重点</h4>
-                  <ul className="text-sm space-y-1">
-                    {phase.focusAreas.map((area: string, i: number) => (
-                      <li key={i} className="flex items-start">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mt-1.5 mr-2"></span>
-                        {area}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-2">学习目标</h4>
-                  <ul className="text-sm space-y-1">
-                    {phase.learningGoals.map((goal: string, i: number) => (
-                      <li key={i} className="flex items-start">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mt-1.5 mr-2"></span>
-                        {goal}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-2">推荐资源</h4>
-                  <ul className="text-sm space-y-1">
-                    {phase.recommendedResources.map((resource: string, i: number) => (
-                      <li key={i} className="flex items-start">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary mt-1.5 mr-2"></span>
-                        {resource}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              
-              <Button 
-                size="sm" 
-                className="mt-2 flex items-center gap-1.5"
-                onClick={() => goToPhaseDetail(phase.id)}
+          
+          {expandedSection === 1 && (
+            <div className="p-4 bg-white rounded-lg shadow-sm">
+              {/* 根据计划标题判断是何种职称考试 */}
+              {plan.title && plan.title.includes('初级护师') ? (
+                <>
+                  <p className="mb-2">初级护师的考试有四个项目: 基础知识、相关专业知识、专业知识以及专业实践能力。</p>
+                  <p>包含6个学科: 基础护理学、内科护理学、外科护理学、妇科护理学、儿科护理学、中医护理学。</p>
+                </>
+              ) : plan.title && plan.title.includes('主管护师') ? (
+                <>
+                  <p className="mb-2">主管护师的考试有四个项目: 基础知识、相关专业知识、专业知识以及专业实践能力。</p>
+                  <p>包含6个学科: 基础护理学、内科护理学、外科护理学、妇科护理学、儿科护理学、中医护理学。题目难度和深度较初级护师有所提高。</p>
+                </>
+              ) : (
+                <>
+                  <p className="mb-2">护理职称考试通常有四个项目: 基础知识、相关专业知识、专业知识以及专业实践能力。</p>
+                  <p>包含6个主要学科: 基础护理学、内科护理学、外科护理学、妇科护理学、儿科护理学、中医护理学。</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* 规划总览 */}
+        <div className="mb-6">
+          <div 
+            className="flex justify-between items-center mb-2 px-4 py-2 bg-white rounded-lg shadow-sm cursor-pointer"
+            onClick={() => toggleSection(2)}
+          >
+            <div className="flex items-center">
+              <Calendar className="h-5 w-5 mr-2 text-blue-600" />
+              <h2 className="font-semibold text-lg">规划总览</h2>
+            </div>
+            {expandedSection === 2 ? (
+              <ChevronUp className="h-5 w-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-gray-500" />
+            )}
+          </div>
+          
+          {expandedSection === 2 && (
+            <div className="p-4 bg-white rounded-lg shadow-sm">
+              {plan.overview || plan.planData?.overview ? (
+                <p className="mb-4 whitespace-pre-line">{plan.overview || plan.planData?.overview}</p>
+              ) : (
+                <>
+                  <p className="mb-4">您的目标是在2026年4月通过初级护师职称考试，根据您选择的"通关模式"生成以下具体备考规划，请查收～</p>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                    <p className="mb-2 text-gray-700">学习将分为3个阶段(不同难度对应不同的阶段):</p>
+                    <ul className="list-disc list-inside space-y-1 text-gray-700">
+                      <li>基础阶段</li>
+                      <li>强化阶段</li>
+                      <li>冲刺阶段</li>
+                    </ul>
+                  </div>
+                  
+                  <p className="text-gray-700 italic">持之以恒才是考试通关的秘诀～ 偶尔懈怠了也不担心，我们会根据你的进度重新规划时间</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* 阶段具体规划 */}
+        <div className="mb-6">
+          <h2 className="font-semibold text-lg flex items-center mb-4">
+            <Star className="h-5 w-5 mr-2 text-blue-600" />
+            阶段具体规划
+          </h2>
+          
+          <div className="space-y-4">
+            {phases.map((phase) => (
+              <Card 
+                key={phase.id} 
+                className={`border-l-4 ${
+                  phase.id === 1 ? 'border-l-blue-500' : 
+                  phase.id === 2 ? 'border-l-green-500' : 
+                  'border-l-purple-500'
+                }`}
               >
-                查看详细任务
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+                <div className="border-b px-4 py-3 flex items-center justify-between">
+                  <CardTitle className="text-base font-medium">{phase.name}</CardTitle>
+                  <div className="text-sm text-gray-500">第{phase.startDay}-{phase.endDay}天</div>
+                </div>
+                <CardContent className="pt-3">
+                  <div 
+                    className="cursor-pointer mb-2" 
+                    onClick={() => toggleSection(phase.id + 10)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <p className="text-gray-700 text-sm">{phase.description}</p>
+                      {expandedSection === phase.id + 10 ? (
+                        <ChevronUp className="h-4 w-4 text-gray-500 flex-shrink-0 ml-2" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-gray-500 flex-shrink-0 ml-2" />
+                      )}
+                    </div>
+                    <div className="mt-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span>完成进度</span>
+                        <span>{getPhaseProgress(phase.id)}%</span>
+                      </div>
+                      <Progress value={getPhaseProgress(phase.id)} className="h-2 mt-1" />
+                    </div>
+                  </div>
+                  
+                  {expandedSection === phase.id + 10 && (
+                    <div className="mt-4 border-t pt-3">
+                      <div className="grid gap-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">学习重点</h4>
+                          <ul className="text-sm space-y-1">
+                            {phase.focusAreas.map((area: string, i: number) => (
+                              <li key={i} className="flex items-start">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
+                                {area}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">学习目标</h4>
+                          <ul className="text-sm space-y-1">
+                            {phase.learningGoals.map((goal: string, i: number) => (
+                              <li key={i} className="flex items-start">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
+                                {goal}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">推荐资源</h4>
+                          <ul className="text-sm space-y-1">
+                            {phase.recommendedResources.map((resource: string, i: number) => (
+                              <li key={i} className="flex items-start">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
+                                {resource}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        size="sm" 
+                        className="mt-4 w-full"
+                        onClick={() => goToPhaseDetail(phase.id)}
+                      >
+                        查看详细任务
+                        <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

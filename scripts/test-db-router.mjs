@@ -4,7 +4,7 @@
  * @date 2024-08-05
  */
 
-import { generateStudyPlanFromDatabase } from '../src/lib/ai/db-router.js';
+import { generateStudyPlanFromDatabase } from '../src/lib/ai/study-plan-service.js';
 import fs from 'fs';
 
 // 测试用的表单数据

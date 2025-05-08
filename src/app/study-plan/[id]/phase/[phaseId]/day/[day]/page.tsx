@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Book, BookOpen, Clock, CheckCircle, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Book, BookOpen, Clock, CheckCircle, Lightbulb, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
 
@@ -23,6 +23,7 @@ interface Task {
   duration: number;
   resources: string[];
   isCompleted: boolean;
+  subject?: string; // 添加关联的科目
 }
 
 interface DailyPlan {
@@ -47,6 +48,15 @@ interface KnowledgePoint {
   difficulty: number;
   importance: number;
   keywords: string[] | null;
+}
+
+// 判断科目是否为专业实践能力相关
+function isPracticalSubject(subject: string): boolean {
+  return subject.includes('专业实践能力') || 
+         subject.includes('实践能力') || 
+         subject.includes('操作技能') ||
+         subject.includes('实践技能') ||
+         subject.includes('基础护理');
 }
 
 function getCachedPlanData(planId: string): { plan: any; phases: any[]; dailyPlans: DailyPlan[] } | null {
@@ -90,6 +100,8 @@ export default function DailyLearningPage() {
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePoint[]>([]);
   const [activeTab, setActiveTab] = useState('content');
   const [dayFormatted, setDayFormatted] = useState('');
+  const [practicalTasks, setPracticalTasks] = useState<Task[]>([]);
+  const [otherTasks, setOtherTasks] = useState<Task[]>([]);
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -127,6 +139,9 @@ export default function DailyLearningPage() {
         // 设置状态
         setDailyPlan(matchingPlan);
         
+        // 分类任务为专业实践能力相关和其他
+        categorizeTasks(matchingPlan);
+        
         // 格式化日期
         const dateObj = new Date(matchingPlan.date);
         setDayFormatted(`${dateObj.getMonth() + 1}月${dateObj.getDate()}日`);
@@ -143,6 +158,48 @@ export default function DailyLearningPage() {
     
     loadDailyPlan();
   }, [isAuthenticated, params, router]);
+  
+  // 分类任务为专业实践能力相关和其他
+  const categorizeTasks = (plan: DailyPlan) => {
+    // 基于科目或任务标题/描述判断
+    const practicalSubjects = plan.subjects.filter(isPracticalSubject);
+    
+    // 将任务分为专业实践能力相关和其他
+    const practical: Task[] = [];
+    const others: Task[] = [];
+    
+    plan.tasks.forEach(task => {
+      // 增强版判断: 任务是否与专业实践能力相关
+      const isPractical = 
+        // 如果任务本身有科目标记并且是专业实践能力
+        (task.subject && isPracticalSubject(task.subject)) ||
+        // 或者任务标题/描述中包含相关关键词
+        task.title.includes('实践') || 
+        task.title.includes('操作') || 
+        task.title.includes('技能') ||
+        task.title.includes('护理') ||
+        task.description.includes('实践能力') ||
+        task.description.includes('操作技能') ||
+        // 或者任务的资源名称包含相关关键词
+        task.resources.some(r => 
+          r.includes('实践') || 
+          r.includes('操作') || 
+          r.includes('技能') || 
+          r.includes('基础护理')
+        ) ||
+        // 如果有专业实践能力科目，且计划中只有一个科目，则所有任务都视为相关
+        (practicalSubjects.length > 0 && plan.subjects.length === 1);
+      
+      if (isPractical) {
+        practical.push(task);
+      } else {
+        others.push(task);
+      }
+    });
+    
+    setPracticalTasks(practical);
+    setOtherTasks(others);
+  };
   
   const fetchKnowledgePoints = async (planId: string, dailyPlan: DailyPlan) => {
     if (!dailyPlan.subjects.length) return;
@@ -184,6 +241,9 @@ export default function DailyLearningPage() {
     
     const updatedPlan = { ...dailyPlan, tasks: updatedTasks };
     setDailyPlan(updatedPlan);
+    
+    // 更新任务分类
+    categorizeTasks(updatedPlan);
     
     // 更新缓存
     const cachedData = getCachedPlanData(String(params.id));
@@ -229,6 +289,9 @@ export default function DailyLearningPage() {
   const totalTasks = dailyPlan.tasks.length;
   const progress = totalTasks > 0 ? Math.round((completedTaskCount / totalTasks) * 100) : 0;
   
+  // 获取专业实践能力科目
+  const practicalSubjects = dailyPlan.subjects.filter(isPracticalSubject);
+  
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
       {/* 页面头部 */}
@@ -252,11 +315,26 @@ export default function DailyLearningPage() {
         <div className="text-sm font-medium mb-2">今日学习主题:</div>
         <div className="flex flex-wrap gap-2">
           {dailyPlan.subjects.map((subject, idx) => (
-            <span key={idx} className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-sm">
-              {subject}
+            <span 
+              key={idx} 
+              className={`inline-block px-2 py-1 rounded text-sm ${
+                isPracticalSubject(subject) 
+                  ? 'bg-blue-100 text-blue-700 font-medium' 
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {subject}{isPracticalSubject(subject) && ' ★'}
             </span>
           ))}
         </div>
+        {practicalSubjects.length > 0 && (
+          <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-100">
+            <div className="flex items-center text-sm text-blue-700">
+              <Star className="h-4 w-4 mr-1" />
+              <span>重点关注专业实践能力科目</span>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* 选项卡内容 */}
@@ -293,7 +371,15 @@ export default function DailyLearningPage() {
                       <div>
                         <CardTitle className="text-lg font-semibold">{kp.title}</CardTitle>
                         <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                          <span>{kp.subjectName}</span>
+                          <span 
+                            className={`px-1.5 py-0.5 rounded ${
+                              isPracticalSubject(kp.subjectName) 
+                                ? 'bg-blue-100 text-blue-600' 
+                                : 'bg-gray-100'
+                            }`}
+                          >
+                            {kp.subjectName}
+                          </span>
                           <span>•</span>
                           <span>{kp.chapterName}</span>
                         </div>
@@ -332,50 +418,159 @@ export default function DailyLearningPage() {
             </div>
           )}
           
-          {/* 学习任务 */}
-          <div className="mt-8">
-            <h2 className="text-lg font-semibold mb-4">今日学习任务</h2>
-            <div className="space-y-4">
-              {dailyPlan.tasks.map((task, index) => (
-                <Card key={index} className={`border ${task.isCompleted ? 'bg-gray-50' : ''}`}>
-                  <CardHeader className="py-3 px-4">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-base font-medium">{task.title}</CardTitle>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 whitespace-nowrap">
-                          <Clock className="h-3 w-3 inline mr-1" /> {task.duration}分钟
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon" 
-                          className={`h-8 w-8 ${task.isCompleted ? 'text-green-600' : 'text-gray-400'}`}
-                          onClick={() => handleTaskComplete(index)}
-                        >
-                          <CheckCircle className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="py-2 px-4">
-                    <p className="text-sm text-gray-600 mb-3">{task.description}</p>
-                    {task.resources && task.resources.length > 0 && (
-                      <div className="mt-2">
-                        <h4 className="text-xs font-medium mb-1 text-gray-500">学习资源:</h4>
-                        <ul className="text-xs text-gray-600 space-y-1">
-                          {task.resources.map((resource, idx) => (
-                            <li key={idx} className="flex items-center gap-1">
-                              <BookOpen className="h-3 w-3 text-blue-500" />
-                              <span>{resource}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+          {/* 学习任务 - 专业实践能力科目 */}
+          {practicalTasks.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-lg font-semibold mb-4 flex items-center text-blue-700">
+                <Star className="h-4 w-4 mr-2" />
+                专业实践能力学习任务
+              </h2>
+              <div className="space-y-4">
+                {practicalTasks.map((task, index) => {
+                  const taskIndex = dailyPlan.tasks.findIndex(t => 
+                    t.title === task.title && t.description === task.description
+                  );
+                  return (
+                    <Card key={index} className={`border ${task.isCompleted ? 'bg-blue-50' : 'border-blue-100'}`}>
+                      <CardHeader className="py-3 px-4">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-base font-medium">{task.title}</CardTitle>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-blue-100 px-2 py-1 rounded text-blue-600 whitespace-nowrap">
+                              <Clock className="h-3 w-3 inline mr-1" /> {task.duration}分钟
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon" 
+                              className={`h-8 w-8 ${task.isCompleted ? 'text-green-600' : 'text-gray-400'}`}
+                              onClick={() => handleTaskComplete(taskIndex)}
+                            >
+                              <CheckCircle className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="py-2 px-4">
+                        <p className="text-sm text-gray-600 mb-3">{task.description}</p>
+                        {task.resources && task.resources.length > 0 && (
+                          <div className="mt-2">
+                            <h4 className="text-xs font-medium mb-1 text-gray-500">学习资源:</h4>
+                            <ul className="text-xs text-gray-600 space-y-1">
+                              {task.resources.map((resource, idx) => (
+                                <li key={idx} className="flex items-center gap-1">
+                                  <BookOpen className="h-3 w-3 text-blue-500" />
+                                  <span>{resource}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+          
+          {/* 其他学习任务 */}
+          {otherTasks.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-lg font-semibold mb-4">其他学习任务</h2>
+              <div className="space-y-4">
+                {otherTasks.map((task, index) => {
+                  const taskIndex = dailyPlan.tasks.findIndex(t => 
+                    t.title === task.title && t.description === task.description
+                  );
+                  return (
+                    <Card key={index} className={`border ${task.isCompleted ? 'bg-gray-50' : ''}`}>
+                      <CardHeader className="py-3 px-4">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-base font-medium">{task.title}</CardTitle>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 whitespace-nowrap">
+                              <Clock className="h-3 w-3 inline mr-1" /> {task.duration}分钟
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon" 
+                              className={`h-8 w-8 ${task.isCompleted ? 'text-green-600' : 'text-gray-400'}`}
+                              onClick={() => handleTaskComplete(taskIndex)}
+                            >
+                              <CheckCircle className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="py-2 px-4">
+                        <p className="text-sm text-gray-600 mb-3">{task.description}</p>
+                        {task.resources && task.resources.length > 0 && (
+                          <div className="mt-2">
+                            <h4 className="text-xs font-medium mb-1 text-gray-500">学习资源:</h4>
+                            <ul className="text-xs text-gray-600 space-y-1">
+                              {task.resources.map((resource, idx) => (
+                                <li key={idx} className="flex items-center gap-1">
+                                  <BookOpen className="h-3 w-3 text-gray-500" />
+                                  <span>{resource}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {/* 如果任务都归类到其中一类了，但原始任务列表不为空，显示原始列表 */}
+          {practicalTasks.length === 0 && otherTasks.length === 0 && dailyPlan.tasks.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-lg font-semibold mb-4">今日学习任务</h2>
+              <div className="space-y-4">
+                {dailyPlan.tasks.map((task, index) => (
+                  <Card key={index} className={`border ${task.isCompleted ? 'bg-gray-50' : ''}`}>
+                    <CardHeader className="py-3 px-4">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-base font-medium">{task.title}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 whitespace-nowrap">
+                            <Clock className="h-3 w-3 inline mr-1" /> {task.duration}分钟
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon" 
+                            className={`h-8 w-8 ${task.isCompleted ? 'text-green-600' : 'text-gray-400'}`}
+                            onClick={() => handleTaskComplete(index)}
+                          >
+                            <CheckCircle className="h-5 w-5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="py-2 px-4">
+                      <p className="text-sm text-gray-600 mb-3">{task.description}</p>
+                      {task.resources && task.resources.length > 0 && (
+                        <div className="mt-2">
+                          <h4 className="text-xs font-medium mb-1 text-gray-500">学习资源:</h4>
+                          <ul className="text-xs text-gray-600 space-y-1">
+                            {task.resources.map((resource, idx) => (
+                              <li key={idx} className="flex items-center gap-1">
+                                <BookOpen className="h-3 w-3 text-gray-500" />
+                                <span>{resource}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
           
           {/* 复习建议 */}
           {dailyPlan.reviewTips && (

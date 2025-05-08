@@ -129,6 +129,33 @@ function cachePlanData(planId: string, data: { plan: Plan; phases: Phase[]; dail
   }
 }
 
+// Add a new function to identify and highlight Professional Practice ability subject
+/**
+ * @description 确定科目是否为专业实践能力
+ * @param {string} subject - 科目名称
+ * @returns {boolean} 是否为专业实践能力科目
+ */
+function isPracticalSubject(subject: string): boolean {
+  return subject.includes('专业实践能力') || 
+         subject.includes('实践能力') || 
+         subject.includes('操作技能') ||
+         subject.includes('实践技能');
+}
+
+// Add a new component to render subjects with highlighting
+function SubjectBadge({ subject }: { subject: string }) {
+  const isPractical = isPracticalSubject(subject);
+  return (
+    <span className={`px-2 py-1 text-xs rounded-md ${
+      isPractical 
+        ? 'bg-blue-100 text-blue-700 font-medium' 
+        : 'bg-gray-100 text-gray-600'
+    }`}>
+      {subject}{isPractical && ' ★'}
+    </span>
+  );
+}
+
 export default function PhaseDetailView() {
   const params = useParams();
   const router = useRouter();
@@ -406,34 +433,69 @@ export default function PhaseDetailView() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <p className="text-sm text-gray-700 mb-4 italic">{currentWeekData.weeklySubjectsOverview}</p>
+                <div className="mb-4">
+                  <div className="text-sm text-gray-700 mb-2 flex items-center gap-2">
+                    <span className="font-medium">本周学习重点:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {Array.from(new Set(
+                        currentWeekData.dailyPlansInWeek.flatMap(dp => dp.subjects)
+                      )).map((subject, idx) => (
+                        <SubjectBadge key={idx} subject={subject} />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 italic">
+                    备注: 标记★的为专业实践能力相关内容，本备考规划将重点关注该部分
+                  </p>
+                </div>
                 
                 <div className="space-y-3">
-                  {daysToDisplay.map((dayInfo) => (
-                    <div
-                      key={dayInfo.date.toISOString()}
-                      onClick={() => handleDayClick(dayInfo)}
-                      className={`p-3 rounded-md border flex justify-between items-center transition-all hover:shadow-md ${
-                        dayInfo.plan 
-                          ? 'bg-white hover:border-primary cursor-pointer' 
-                          : 'bg-gray-50 text-gray-400 hover:bg-gray-100 cursor-pointer'
-                      }`}
-                    >
-                      <div>
-                        <p className={`font-medium ${dayInfo.plan ? 'text-gray-800' : 'text-gray-500'}`}>
-                          {dayInfo.dayLabel}
-                        </p>
-                        {dayInfo.plan ? (
-                          <p className="text-xs text-primary mt-0.5">
-                            {dayInfo.plan.title} (共 {dayInfo.plan.tasks.length} 项任务)
+                  {daysToDisplay.map((dayInfo) => {
+                    // 检查是否包含专业实践能力科目
+                    const hasPracticalSubject = dayInfo.plan?.subjects?.some(isPracticalSubject) ?? false;
+                    return (
+                      <div
+                        key={dayInfo.date.toISOString()}
+                        onClick={() => handleDayClick(dayInfo)}
+                        className={`p-3 rounded-md border flex justify-between items-center transition-all hover:shadow-md ${
+                          dayInfo.plan 
+                            ? hasPracticalSubject
+                              ? 'bg-blue-50 hover:border-primary cursor-pointer border-blue-100' 
+                              : 'bg-white hover:border-primary cursor-pointer'
+                            : 'bg-gray-50 text-gray-400 hover:bg-gray-100 cursor-pointer'
+                        }`}
+                      >
+                        <div>
+                          <p className={`font-medium ${dayInfo.plan ? 'text-gray-800' : 'text-gray-500'}`}>
+                            {dayInfo.dayLabel}
                           </p>
-                        ) : (
-                          <p className="text-xs text-gray-400 mt-0.5">无学习任务</p>
-                        )}
+                          {dayInfo.plan ? (
+                            <div>
+                              <p className="text-xs text-primary mt-0.5">
+                                {dayInfo.plan.title} (共 {dayInfo.plan.tasks.length} 项任务)
+                              </p>
+                              {dayInfo.plan.subjects.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {dayInfo.plan.subjects.map((subject, idx) => (
+                                    <span key={idx} className={`px-1.5 py-0.5 text-xs rounded ${
+                                      isPracticalSubject(subject) 
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {subject}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-0.5">无学习任务</p>
+                          )}
+                        </div>
+                        {dayInfo.plan && <ArrowRight className="h-4 w-4 text-gray-400" />}
                       </div>
-                      {dayInfo.plan && <ArrowRight className="h-4 w-4 text-gray-400" />}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

@@ -231,7 +231,7 @@ export async function callDeepSeekAPI(
     
     // 固定使用官方的API URL格式
     // DeepSeek的标准端点为 https://api.deepseek.com/chat/completions
-    const apiUrl = 'https://api.deepseek.com/chat/completions';
+    const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
     
     console.log('开始API请求...');
     console.log('API请求配置 (部分):', JSON.stringify({
@@ -274,56 +274,108 @@ export async function callDeepSeekAPI(
     // 打印前100个字符用于调试
     console.log('AI响应内容前100个字符:', contentText.substring(0, 100));
     
-    // 解析JSON，处理可能的Markdown代码块格式
-    try {
-      // 尝试直接解析
-      try {
-        return JSON.parse(contentText) as AIResponseData;
-      } catch (directParseError) {
-        console.log('直接解析失败，尝试处理Markdown格式...');
-        
-        // 处理可能包含Markdown格式的情况
-        let jsonText = contentText;
-        
-        // 移除可能的Markdown代码块格式
-        if (jsonText.startsWith('```')) {
-          // 找到第一个和最后一个```
-          const firstBlockEnd = jsonText.indexOf('\n', 3);
-          const lastBlock = jsonText.lastIndexOf('```');
-          
-          if (firstBlockEnd !== -1 && lastBlock !== -1) {
-            // 提取代码块中间的内容
-            jsonText = jsonText.substring(firstBlockEnd + 1, lastBlock).trim();
-            console.log('提取的JSON长度:', jsonText.length);
-            console.log('提取的JSON前50个字符:', jsonText.substring(0, 50));
-          }
-        }
-        
-        // 重新尝试解析
-        return JSON.parse(jsonText) as AIResponseData;
-      }
-    } catch (parseError) {
-      console.error('解析DeepSeek响应JSON失败:', parseError);
-      console.error('响应内容前100个字符:', contentText.substring(0, 100));
-      
-      // 尝试应用正则表达式提取
-      try {
-        console.log('尝试使用正则表达式提取JSON...');
-        const jsonMatch = contentText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const extractedJson = jsonMatch[0];
-          console.log('正则提取的JSON长度:', extractedJson.length);
-          return JSON.parse(extractedJson) as AIResponseData;
-        }
-      } catch (regexError) {
-        console.error('正则提取JSON失败:', regexError);
-      }
-      
-      throw new Error(`解析DeepSeek响应失败: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
-    }
+    // 解析JSON响应，处理多种可能的格式
+    return parseJsonResponse(contentText);
   } catch (error) {
     console.error('DeepSeek API调用失败:', error);
     throw new Error(`DeepSeek API调用失败: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * @description 解析JSON响应，支持多种可能的格式
+ * @param {string} contentText - 响应文本内容
+ * @returns {AIResponseData} - 解析后的数据
+ */
+function parseJsonResponse(contentText: string): AIResponseData {
+  try {
+    // 处理步骤：
+    // 1. 尝试直接解析
+    // 2. 如果失败，尝试从Markdown代码块中提取
+    // 3. 如果失败，尝试使用正则表达式提取
+    // 4. 如果仍然失败，尝试修复常见错误后解析
+    
+    // 记录原始内容长度与结构
+    console.log('解析JSON响应，内容长度:', contentText.length);
+    console.log('响应内容起始字符:', contentText.substring(0, 30).replace(/\n/g, '\\n'));
+    console.log('响应内容结束字符:', contentText.substring(contentText.length - 30).replace(/\n/g, '\\n'));
+    
+    // 步骤1: 尝试直接解析
+    try {
+      return JSON.parse(contentText) as AIResponseData;
+    } catch (directParseError) {
+      console.log('直接解析JSON失败, 尝试其他方法:', directParseError instanceof Error ? directParseError.message : String(directParseError));
+    }
+    
+    // 步骤2: 从Markdown代码块中提取JSON
+    if (contentText.includes('```')) {
+      console.log('检测到可能的Markdown代码块，尝试提取...');
+      
+      // 寻找JSON代码块
+      const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)```/;
+      const match = contentText.match(jsonBlockRegex);
+      
+      if (match && match[1]) {
+        const extractedJson = match[1].trim();
+        console.log('从Markdown代码块提取的JSON长度:', extractedJson.length);
+        
+        try {
+          return JSON.parse(extractedJson) as AIResponseData;
+        } catch (blockParseError) {
+          console.log('解析Markdown代码块中的JSON失败:', blockParseError instanceof Error ? blockParseError.message : String(blockParseError));
+        }
+      } else {
+        console.log('未找到有效的Markdown JSON代码块');
+      }
+    }
+    
+    // 步骤3: 使用正则表达式尝试提取JSON对象
+    console.log('尝试使用正则表达式提取JSON对象...');
+    const jsonRegex = /(\{[\s\S]*\})/;
+    const jsonMatch = contentText.match(jsonRegex);
+    
+    if (jsonMatch && jsonMatch[1]) {
+      const jsonCandidate = jsonMatch[1];
+      console.log('正则提取的潜在JSON长度:', jsonCandidate.length);
+      
+      try {
+        return JSON.parse(jsonCandidate) as AIResponseData;
+      } catch (regexParseError) {
+        console.log('解析正则提取的JSON失败:', regexParseError instanceof Error ? regexParseError.message : String(regexParseError));
+      }
+    }
+    
+    // 步骤4: 尝试修复常见JSON错误
+    console.log('尝试修复常见JSON格式错误...');
+    
+    // 去除非法控制字符
+    let cleanedContent = contentText.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
+    
+    // 尝试移除或修复常见分隔符问题
+    cleanedContent = cleanedContent.replace(/,\s*}/, '}').replace(/,\s*]/, ']');
+    
+    // 尝试找到最外层的 { }
+    const openBrace = cleanedContent.indexOf('{');
+    const closeBrace = cleanedContent.lastIndexOf('}');
+    
+    if (openBrace !== -1 && closeBrace !== -1 && openBrace < closeBrace) {
+      const extractedJson = cleanedContent.substring(openBrace, closeBrace + 1);
+      console.log('提取到最外层大括号内容，长度:', extractedJson.length);
+      
+      try {
+        return JSON.parse(extractedJson) as AIResponseData;
+      } catch (fixedParseError) {
+        console.log('解析修复后的JSON仍然失败:', fixedParseError instanceof Error ? fixedParseError.message : String(fixedParseError));
+      }
+    }
+    
+    // 所有解析方法都失败，抛出最详细的错误
+    console.error('无法解析JSON响应，所有尝试都失败');
+    console.error('响应内容片段:', contentText.substring(0, 200) + '...');
+    throw new Error('无法解析API响应为有效的JSON格式');
+  } catch (error) {
+    console.error('JSON解析过程中发生错误:', error);
+    throw new Error(`解析JSON响应失败: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
