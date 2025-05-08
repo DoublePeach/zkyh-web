@@ -40,57 +40,50 @@ export async function generateStudyPlanFromDatabase(surveyData: SurveyFormData):
     
     console.log(`距离考试还有${daysUntilExam}天，${isLongTermPlan ? `将只生成近${MAX_DAILY_PLAN_DAYS}天的详细规划` : '将生成完整的每日规划'}`);
     
+    let learningMaterials = null;
+    
     try {
       // 从数据库获取学习资料
       console.log('从数据库获取学习资料...');
-      const learningMaterials = await buildLearningMaterialsData(surveyData);
+      learningMaterials = await buildLearningMaterialsData(surveyData);
       console.log('成功获取学习资料:', 
         `考试科目数量: ${learningMaterials.examSubjects.length}, ` + 
         `护理学科数量: ${learningMaterials.nursingDisciplines.length}`
       );
-      
-      // 使用学习资料构建高级提示词
-      const prompt = generateDatabasePrompt(
-        surveyData,
-        daysUntilExam,
-        examDate,
-        isLongTermPlan,
-        planGenerationDays,
-        learningMaterials
-      );
-      
-      // 调用AI服务生成备考规划
-      console.log('调用AI服务生成备考规划...');
-      try {
-        const result = await callAIAPI(prompt);
-        console.log('成功生成备考规划');
-        return result;
-      } catch (apiError) {
-        console.error('AI服务调用失败:', apiError);
-        console.log('使用本地备选方案...');
-        return generateLocalStudyPlan(surveyData, learningMaterials, daysUntilExam);
-      }
     } catch (dbError) {
-      console.error('数据库获取学习资料失败:', dbError);
-      
-      // 数据库失败，尝试使用基础提示词
-      try {
-        console.log('尝试使用基础提示词模板...');
-        const basicPrompt = generateBasicPrompt(surveyData, daysUntilExam, examDate);
-        const result = await callAIAPI(basicPrompt);
-        console.log('使用基础提示词成功生成备考规划');
-        return result;
-      } catch (basicApiError) {
-        console.error('基础提示词API调用也失败:', basicApiError);
-        console.log('使用本地备选方案...');
-        return generateLocalStudyPlan(surveyData, null, daysUntilExam);
-      }
+      // 数据库错误不影响整体流程，记录错误并继续
+      console.error('获取学习资料失败，继续使用基础提示词:', dbError);
+    }
+    
+    // 尝试调用AI API生成规划
+    console.log('调用AI服务生成备考规划...');
+    
+    // 构建提示词
+    const prompt = learningMaterials ? 
+      generateDatabasePrompt(surveyData, daysUntilExam, examDate, isLongTermPlan, planGenerationDays, learningMaterials) :
+      generateBasicPrompt(surveyData, daysUntilExam, examDate);
+    
+    try {
+      // 调用AI API
+      const result = await callAIAPI(prompt);
+      console.log('成功生成备考规划');
+      return result;
+    } catch (apiError) {
+      // API调用失败，记录错误并使用本地生成
+      console.error('AI服务调用失败:', apiError);
+      console.log('使用本地备选方案...');
+      const localPlan = generateLocalStudyPlan(surveyData, learningMaterials, daysUntilExam);
+      console.log('本地备选方案生成成功');
+      return localPlan;
     }
   } catch (error) {
+    // 捕获所有可能的错误
     console.error('生成备考规划过程中发生错误:', error);
     
-    // 最终备用方案：本地生成
-    return generateLocalStudyPlan(surveyData, null, 90); // 默认90天
+    // 使用本地备选方案
+    console.log('使用本地生成方案创建备考规划...');
+    const backupPlan = generateLocalStudyPlan(surveyData, null, 90); // 默认90天
+    return backupPlan;
   }
 }
 

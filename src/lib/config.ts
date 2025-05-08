@@ -63,8 +63,8 @@ export const AI_CONFIG = {
   
   // Deepseek API 基础 URL
   get DEEPSEEK_BASE_URL(): string {
-    return getEnv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1') || 
-           getEnv('NEXT_PUBLIC_DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1');
+    return getEnv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com') || 
+           getEnv('NEXT_PUBLIC_DEEPSEEK_BASE_URL', 'https://api.deepseek.com');
   },
   
   // 默认模型供应商 (deepseek 或 openrouter)

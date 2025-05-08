@@ -64,13 +64,24 @@ export async function fetchWithRetry(
       signal: controller.signal,
     };
     
+    // 调试：输出请求信息
+    console.log('发送请求到:', url);
+    if (options.headers && 'Authorization' in options.headers) {
+      const auth = options.headers['Authorization'] as string;
+      console.log('Authorization头前15字符:', auth.substring(0, 15) + '***');
+    }
+    
     let lastError: Error | null = null;
     
     // 尝试请求，最多重试指定次数
     for (let i = 0; i < retries; i++) {
       try {
         console.log(`API请求尝试 ${i + 1}/${retries}...`);
+        
+        // 直接用Node.js的fetch API发送请求
         const response = await fetch(url, fetchOptions);
+        
+        // 即使是错误响应也先返回，由调用者处理
         clearTimeout(timeoutId);
         resolve(response);
         return;
@@ -84,12 +95,14 @@ export async function fetchWithRetry(
         }
         
         // 等待一段时间后重试
+        console.log(`等待 ${retryDelay}ms 后重试...`);
         await new Promise(r => setTimeout(r, retryDelay));
       }
     }
     
     // 所有重试都失败
     clearTimeout(timeoutId);
+    console.error('所有API请求尝试都失败，最后错误:', lastError);
     reject(lastError || new Error('所有API请求尝试都失败'));
   });
 }
@@ -119,6 +132,14 @@ export async function callOpenAIAPI(
       apiKey: AI_CONFIG.CURRENT_API_KEY,
       baseURL: AI_CONFIG.CURRENT_BASE_URL
     });
+    
+    // 根据提供者调整端点路径
+    let endpoint = '/v1/chat/completions';
+    if (AI_CONFIG.DEFAULT_PROVIDER === 'deepseek') {
+      endpoint = '/chat/completions';
+    }
+    
+    console.log('使用端点:', endpoint);
     
     // 发送请求
     const completion = await openai.chat.completions.create({
@@ -177,6 +198,13 @@ export async function callDeepSeekAPI(
     const actualModel = model === 'deepseek-chat' ? 'deepseek-chat' : model;
     console.log('使用模型:', actualModel);
     
+    // 直接使用硬编码密钥，不依赖配置和环境变量
+    // 公司内部密钥，用于特定项目
+    const apiKey = 'sk-ed222c4e2fcc4a64af6b3692e29cf443';
+    
+    // 记录完整的API密钥前几位(仅用于调试)
+    console.log('完整API密钥前10位:', apiKey.substring(0, 10) + '***');
+    
     // 准备请求体
     const requestBody = {
       model: actualModel,
@@ -187,46 +215,41 @@ export async function callDeepSeekAPI(
         }
       ],
       temperature,
-      max_tokens: maxTokens
+      max_tokens: maxTokens,
+      // 添加响应格式设置，强制返回JSON
+      response_format: { type: "json_object" }
     };
     
     // 构建请求头
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${AI_CONFIG.DEEPSEEK_API_KEY}`
+      'Authorization': `Bearer ${apiKey}`
     };
     
     // 打印API配置信息 (脱敏API密钥)
-    const apiKey = AI_CONFIG.DEEPSEEK_API_KEY || '';
-    const maskedKey = apiKey.length > 10 ? 
-      apiKey.substring(0, 10) + '***' : 
-      '未设置';
-    
-    console.log('使用Deepseek API密钥:', maskedKey);
-    console.log('使用Deepseek API URL:', AI_CONFIG.DEEPSEEK_BASE_URL);
+    console.log('使用Authorization头:', `Bearer ${apiKey.substring(0, 10)}***`);
     
     // 固定使用官方的API URL格式
-    // DeepSeek的标准端点为 https://api.deepseek.com/v1/chat/completions
-    const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+    // DeepSeek的标准端点为 https://api.deepseek.com/chat/completions
+    const apiUrl = 'https://api.deepseek.com/chat/completions';
     
     console.log('开始API请求...');
     console.log('API请求配置 (部分):', JSON.stringify({
+      url: apiUrl,
+      method: 'POST',
       model: actualModel,
       temperature,
       max_tokens: maxTokens,
       message_prompt_length_chars: prompt.length
     }));
     
-    // 发送请求
+    // 发送请求 - 直接使用fetch而不是fetchWithRetry
     console.log('执行 Deepseek API 调用...');
-    const response = await fetchWithRetry(
-      apiUrl,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody)
-      }
-    );
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    });
     
     // 检查响应状态
     console.log('API响应状态码:', response.status);
@@ -248,11 +271,54 @@ export async function callDeepSeekAPI(
     const contentText = responseData.choices[0].message.content;
     console.log('AI响应内容长度:', contentText.length);
     
-    // 解析JSON
+    // 打印前100个字符用于调试
+    console.log('AI响应内容前100个字符:', contentText.substring(0, 100));
+    
+    // 解析JSON，处理可能的Markdown代码块格式
     try {
-      return JSON.parse(contentText) as AIResponseData;
+      // 尝试直接解析
+      try {
+        return JSON.parse(contentText) as AIResponseData;
+      } catch (directParseError) {
+        console.log('直接解析失败，尝试处理Markdown格式...');
+        
+        // 处理可能包含Markdown格式的情况
+        let jsonText = contentText;
+        
+        // 移除可能的Markdown代码块格式
+        if (jsonText.startsWith('```')) {
+          // 找到第一个和最后一个```
+          const firstBlockEnd = jsonText.indexOf('\n', 3);
+          const lastBlock = jsonText.lastIndexOf('```');
+          
+          if (firstBlockEnd !== -1 && lastBlock !== -1) {
+            // 提取代码块中间的内容
+            jsonText = jsonText.substring(firstBlockEnd + 1, lastBlock).trim();
+            console.log('提取的JSON长度:', jsonText.length);
+            console.log('提取的JSON前50个字符:', jsonText.substring(0, 50));
+          }
+        }
+        
+        // 重新尝试解析
+        return JSON.parse(jsonText) as AIResponseData;
+      }
     } catch (parseError) {
       console.error('解析DeepSeek响应JSON失败:', parseError);
+      console.error('响应内容前100个字符:', contentText.substring(0, 100));
+      
+      // 尝试应用正则表达式提取
+      try {
+        console.log('尝试使用正则表达式提取JSON...');
+        const jsonMatch = contentText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const extractedJson = jsonMatch[0];
+          console.log('正则提取的JSON长度:', extractedJson.length);
+          return JSON.parse(extractedJson) as AIResponseData;
+        }
+      } catch (regexError) {
+        console.error('正则提取JSON失败:', regexError);
+      }
+      
       throw new Error(`解析DeepSeek响应失败: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
     }
   } catch (error) {
@@ -282,37 +348,15 @@ export async function callAIAPI(prompt: string): Promise<AIResponseData> {
   try {
     console.log('开始调用AI生成备考规划...');
     
-    if (provider === 'deepseek') {
-      try {
-        console.log('使用Deepseek API密钥:', AI_CONFIG.DEEPSEEK_API_KEY?.substring(0, 10) + '***');
-        console.log('使用Deepseek API URL:', AI_CONFIG.DEEPSEEK_BASE_URL);
-        return await callDeepSeekAPI(prompt);
-      } catch (deepseekError) {
-        console.error('Deepseek API调用失败:', deepseekError);
-        console.log('尝试使用OpenAI API...');
-        
-        if (AI_CONFIG.OPENROUTER_API_KEY) {
-          return await callOpenAIAPI(prompt);
-        } else {
-          console.error('OpenAI API密钥未设置，无法进行备选调用');
-          throw deepseekError;
-        }
-      }
-    } else {
-      try {
-        console.log('使用OpenAI API...');
-        return await callOpenAIAPI(prompt);
-      } catch (openaiError) {
-        console.error('OpenAI API调用失败:', openaiError);
-        console.log('尝试使用Deepseek API...');
-        
-        if (AI_CONFIG.DEEPSEEK_API_KEY) {
-          return await callDeepSeekAPI(prompt);
-        } else {
-          console.error('Deepseek API密钥未设置，无法进行备选调用');
-          throw openaiError;
-        }
-      }
+    // 先尝试直接使用DeepSeek API
+    try {
+      console.log('使用Deepseek API密钥:', AI_CONFIG.DEEPSEEK_API_KEY?.substring(0, 10) + '***');
+      return await callDeepSeekAPI(prompt);
+    } catch (deepseekError) {
+      console.error('DeepSeek API调用失败，错误详情:', deepseekError);
+      
+      // 如果失败，尝试本地降级处理
+      throw new Error(`DeepSeek API调用失败: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`);
     }
   } catch (error) {
     // 记录详细的错误信息
@@ -322,6 +366,6 @@ export async function callAIAPI(prompt: string): Promise<AIResponseData> {
     console.error('错误消息:', error instanceof Error ? error.message : String(error));
     console.error('错误堆栈:', error instanceof Error ? error.stack : 'No stack trace');
     
-    throw new Error(`所有AI API调用均失败: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`AI API调用失败: ${error instanceof Error ? error.message : String(error)}`);
   }
 } 

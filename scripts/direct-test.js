@@ -1,38 +1,48 @@
 /**
- * @description DeepSeek API测试脚本
+ * @description DeepSeek API直接测试脚本(无依赖)
  * @author 郝桃桃
  * @date 2024-09-30
  */
 
-// 使用Node.js原生fetch API
-async function testDeepSeekApi() {
+// 完全不依赖任何配置，直接使用硬编码值测试
+async function directApiTest() {
   try {
-    // 从环境变量或.env文件中获取API密钥
-    const apiKey = process.env.DEEPSEEK_API_KEY || 'sk-ed222c4e2fcc4a64af6b3692e29cf443';
+    console.log('----- DeepSeek API直接测试脚本 -----');
+    
+    // 使用与应用中完全相同的API密钥
+    const apiKey = 'sk-ed222c4e2fcc4a64af6b3692e29cf443';
     console.log('使用API密钥:', apiKey.substring(0, 10) + '***');
     
-    // 准备请求体
+    // 使用与应用中完全相同的API端点
+    const apiUrl = 'https://api.deepseek.com/chat/completions';
+    console.log('使用API端点:', apiUrl);
+    
+    // 使用与应用中完全相同的请求头
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    };
+    console.log('使用请求头:', JSON.stringify({
+      'Content-Type': headers['Content-Type'],
+      'Authorization': headers['Authorization'].substring(0, 16) + '***'
+    }));
+    
+    // 简单的请求体
     const requestBody = {
       model: 'deepseek-chat',
       messages: [
         {
           role: 'user',
-          content: '你好，请简单回答一下：1+1等于几？'
+          content: '请简单回答: 今天天气好吗?'
         }
       ],
       temperature: 0.3,
       max_tokens: 50
     };
     
-    // 构建请求头
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    };
-    
     // 发送请求
     console.log('开始API请求...');
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody)
@@ -63,4 +73,4 @@ async function testDeepSeekApi() {
 }
 
 // 执行测试
-testDeepSeekApi(); 
+directApiTest(); 
