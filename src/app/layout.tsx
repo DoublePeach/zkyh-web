@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import AppLayoutClient from "@/components/layouts/app-layout-client";
 import { cn } from "@/lib/utils"; // Import cn if not already present
 import NursingAssistantLogin from '@/components/shared/NursingAssistantLogin';
+import { Suspense } from 'react';
 
 // Configure local font
 const fontSans = localFont({
@@ -53,7 +54,9 @@ export default function RootLayout({
       <body className={cn("antialiased", fontSans.variable)}>
         <AppLayoutClient>
           <Toaster />
-          <NursingAssistantLogin />
+          <Suspense fallback={null}>
+            <NursingAssistantLogin />
+          </Suspense>
           {children}
         </AppLayoutClient>
       </body>

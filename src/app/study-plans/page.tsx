@@ -6,7 +6,7 @@
  * @date 2024-06-25
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -36,7 +36,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 
 type StudyPlan = InferSelectModel<typeof studyPlans>;
 
-export default function StudyPlansPage() {
+function StudyPlansContent() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
@@ -395,5 +395,20 @@ export default function StudyPlansPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function StudyPlansPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center py-20">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500">加载中...</p>
+        </div>
+      </div>
+    }>
+      <StudyPlansContent />
+    </Suspense>
   );
 } 

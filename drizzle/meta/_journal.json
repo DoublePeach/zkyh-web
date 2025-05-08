@@ -29,6 +29,13 @@
       "when": 1718969100000,
       "tag": "0004_optimize_study_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1746687682532,
+      "tag": "0005_supreme_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }
