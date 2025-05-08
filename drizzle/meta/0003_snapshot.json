@@ -1,10 +1,8 @@
 {
-  "version": "5",
-  "dialect": "pg",
-  "id": "72f2b4c0-6a21-4580-a2f3-6c7a33cdcc15",
-  "prevId": "00000000-0000-0000-0000-000000000002",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "study_plans": {
+    "public.study_plans": {
       "name": "study_plans",
       "schema": "",
       "columns": {
@@ -117,7 +115,10 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     }
   },
   "enums": {},
@@ -126,5 +127,11 @@
     "schemas": {},
     "tables": {},
     "columns": {}
-  }
-} 
+  },
+  "id": "72f2b4c0-6a21-4580-a2f3-6c7a33cdcc15",
+  "prevId": "00000000-0000-0000-0000-000000000002",
+  "sequences": {},
+  "policies": {},
+  "views": {},
+  "roles": {}
+}
