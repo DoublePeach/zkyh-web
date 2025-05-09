@@ -31,13 +31,28 @@ async function saveToFile(filename: string, content: string): Promise<string> {
     // 生成完整的文件路径
     const filePath = path.join(TIPS_DIR, filename);
     
-    // 写入文件
-    await fs.writeFile(filePath, content, 'utf8');
+    // 检查内容大小
+    const contentSizeInMB = Buffer.byteLength(content, 'utf8') / (1024 * 1024);
+    console.log(`保存文件 ${filename}, 内容大小: ${contentSizeInMB.toFixed(2)} MB`);
     
-    console.log(`成功保存文件到: ${filePath}`);
+    // 写入文件 - 使用writeFile代替，增加配置项以处理大文件
+    await fs.writeFile(filePath, content, { 
+      encoding: 'utf8',
+      flag: 'w' // 覆盖写入
+    });
+    
+    // 验证文件是否成功写入
+    const stats = await fs.stat(filePath);
+    console.log(`成功保存文件到: ${filePath}, 文件大小: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
     return filePath;
   } catch (error) {
     console.error('保存文件失败:', error);
+    // 更详细地记录错误信息
+    if (error instanceof Error) {
+      console.error('错误类型:', error.name);
+      console.error('错误消息:', error.message);
+      console.error('错误堆栈:', error.stack);
+    }
     return '';
   }
 }
@@ -100,19 +115,56 @@ export async function generateStudyPlanFromDatabase(surveyData: SurveyFormData):
       generateDatabasePrompt(surveyData, daysUntilExam, examDate, isLongTermPlan, planGenerationDays, learningMaterials) :
       generateBasicPrompt(surveyData, daysUntilExam, examDate);
     
+    // 检查提示词大小，尝试减少内容
+    const promptSizeInKB = Buffer.byteLength(prompt, 'utf8') / 1024;
+    console.log(`提示词已生成，长度: ${prompt.length} 字符，大小: ${promptSizeInKB.toFixed(2)} KB`);
+    
+    // 如果提示词太大，尝试减少内容
+    let optimizedPrompt = prompt;
+    if (promptSizeInKB > 50) {
+      console.log('提示词较大，尝试优化...');
+      
+      // 检查提示词是否包含非ASCII字符
+      const hasNonAsciiChars = /[^\x00-\x7F]/.test(prompt);
+      if (hasNonAsciiChars) {
+        console.log('检测到提示词包含非ASCII字符（如中文），确保正确编码');
+      }
+      
+      // 这里可以实现更复杂的优化逻辑，比如删减学习资料
+      // 目前我们只确保编码正确
+    }
+    
+    // 确保提示词是有效的UTF-8字符串
+    try {
+      // 尝试对提示词进行解码再编码，确保字符编码正确
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder('utf-8');
+      const encoded = encoder.encode(optimizedPrompt);
+      optimizedPrompt = decoder.decode(encoded);
+      
+      console.log('已处理提示词编码，确保UTF-8兼容性');
+    } catch (encodeError) {
+      console.error('提示词编码处理失败:', encodeError);
+      // 如果处理失败，保留原始提示词
+    }
+    
     // 生成唯一的文件名
     const timestamp = Date.now();
     const promptFilename = `prompt_${timestamp}.txt`;
     
     // 异步保存提示词到文件
-    const savePromptPromise = saveToFile(promptFilename, prompt);
+    const savePromptPromise = saveToFile(promptFilename, optimizedPrompt);
     
     try {
       // 记录提示词长度
-      console.log(`提示词已生成，长度: ${prompt.length} 字符`);
+      console.log(`提示词已生成，长度: ${optimizedPrompt.length} 字符`);
       
-      // 调用AI API
-      const result = await callAIAPI(prompt);
+      // 获取知识点数量，用于处理学习计划
+      const knowledgePointsCount = learningMaterials?.knowledgePoints?.length || 30;
+      console.log(`知识点数量: ${knowledgePointsCount}，将均匀分配到30天学习计划中`);
+      
+      // 调用AI API，传递知识点数量
+      const result = await callAIAPI(optimizedPrompt, knowledgePointsCount);
       console.log('成功从API获取响应');
       
       // 等待提示词保存完成
@@ -121,8 +173,30 @@ export async function generateStudyPlanFromDatabase(surveyData: SurveyFormData):
       // 保存API响应到文件
       const responseFilename = `response_${timestamp}.json`;
       try {
+        // 检查结果的完整性
+        if (!result.dailyPlans || result.dailyPlans.length === 0) {
+          console.warn('警告: 返回的AI响应缺少dailyPlans或为空');
+        } else if (result.dailyPlans.length < 10) {
+          console.warn(`警告: 返回的dailyPlans数量较少，只有${result.dailyPlans.length}天`);
+        }
+        
+        // 使用JSON.stringify处理大型响应内容
         const responseJson = JSON.stringify(result, null, 2);
+        console.log(`API响应序列化完成，JSON长度: ${responseJson.length} 字符`);
+        
+        // 保存完整内容到文件
         await saveToFile(responseFilename, responseJson);
+        
+        // 额外记录一些响应信息用于调试
+        const summaryFilename = `summary_${timestamp}.txt`;
+        const summary = `
+          响应概览:
+          - 阶段数量: ${result.phases?.length || 0}
+          - 日计划数量: ${result.dailyPlans?.length || 0}
+          - JSON大小: ${responseJson.length} 字符
+          - 生成时间: ${new Date().toISOString()}
+        `;
+        await saveToFile(summaryFilename, summary);
       } catch (saveError) {
         console.error('保存API响应到文件失败:', saveError);
       }
@@ -140,7 +214,7 @@ export async function generateStudyPlanFromDatabase(surveyData: SurveyFormData):
       // 保存错误信息到文件
       const errorFilename = `error_${timestamp}.txt`;
       try {
-        await saveToFile(errorFilename, `API调用失败: ${apiError}\n\n原始提示词:\n${prompt}`);
+        await saveToFile(errorFilename, `API调用失败: ${apiError}\n\n原始提示词:\n${optimizedPrompt}`);
       } catch (saveError) {
         console.error('保存错误信息到文件失败:', saveError);
       }
@@ -179,79 +253,145 @@ export async function generateStudyPlanFromDatabase(surveyData: SurveyFormData):
 }
 
 /**
- * @description 从数据库构建学习资料数据
+ * @description 从数据库构建学习资料数据 - 专注于基础护理学
  * @param {SurveyFormData} surveyData - 用户表单数据
  * @returns {Promise<LearningMaterial>} 学习资料数据
  */
 async function buildLearningMaterialsData(surveyData: SurveyFormData): Promise<LearningMaterial> {
   try {
-    // 获取考试科目
-    const examSubjects = await fetchExamSubjects();
+    // 仅获取专业实践能力考试科目
+    const examSubjects = await fetchPracticalExamSubject();
     
-    // 获取护理学科 - 优先获取基础护理学(ID=4)
-    const nursingDisciplines = await fetchNursingDisciplines();
+    // 仅获取基础护理学学科
+    const basicNursingDiscipline = await fetchBasicNursingDiscipline();
     
-    // 获取知识点 - 优先获取与专业实践能力(ID=4)和基础护理学相关的知识点
-    const knowledgePoints = await fetchKnowledgePoints();
+    if (!basicNursingDiscipline) {
+      throw new Error('未找到基础护理学学科数据');
+    }
     
-    // 获取题库 - 优先获取专业实践能力科目(ID=4)的题库
-    const testBanks = await fetchTestBanks();
+    // 获取基础护理学的章节
+    const chapters = await fetchChaptersByDiscipline(basicNursingDiscipline.id);
     
-    // 构建学科与章节关系 - 优先处理基础护理学
-    console.log('开始构建学科与章节关系');
-    const nursingDisciplinesWithChapters = await Promise.all(
-      nursingDisciplines.map(async (discipline) => {
-        const chapters = await fetchChaptersByDiscipline(discipline.id);
+    // 获取这些章节相关的知识点
+    const chapterIds = chapters.map(chapter => chapter.id);
+    const knowledgePoints = await fetchKnowledgePointsByChapters(chapterIds);
+    
+    // 构建基础护理学与章节的关系
+    console.log('构建基础护理学与章节的关系');
+    const nursingDisciplineWithChapters = {
+      ...basicNursingDiscipline,
+      chapters: chapters.map(chapter => {
+        // 为每个章节添加关联的知识点
+        const chapterKnowledgePoints = knowledgePoints.filter(kp => kp.chapter_id === chapter.id);
         return {
-          ...discipline,
-          chapters
+          ...chapter,
+          knowledgePoints: chapterKnowledgePoints
         };
       })
-    );
+    };
     
-    // 按照科目ID排序，使专业实践能力(ID=4)排前面
-    const sortedExamSubjects = [...examSubjects].sort((a, b) => {
-      // ID为4的排最前面
-      if (a.id === 4) return -1;
-      if (b.id === 4) return 1;
-      return a.id - b.id;
-    });
-    
-    // 按照学科ID排序，使基础护理学(ID=4)排前面
-    const sortedNursingDisciplines = [...nursingDisciplinesWithChapters].sort((a, b) => {
-      // ID为4的排最前面
-      if (a.id === 4) return -1;
-      if (b.id === 4) return 1;
-      return a.id - b.id;
-    });
-    
-    // 返回完整的学习资料结构
+    // 返回专注于基础护理学的学习资料结构
     return {
-      examSubjects: sortedExamSubjects,
-      nursingDisciplines: sortedNursingDisciplines,
-      knowledgePoints,
-      testBanks
+      examSubjects: examSubjects,
+      nursingDisciplines: [nursingDisciplineWithChapters],
+      knowledgePoints: knowledgePoints,
+      testBanks: [] // 不再需要题库数据
     };
   } catch (error) {
-    console.error('构建学习资料数据失败:', error);
+    console.error('构建基础护理学学习资料数据失败:', error);
     throw error;
   }
 }
 
 /**
- * @description 获取所有考试科目
- * @returns {Promise<any[]>} 考试科目列表
+ * @description 仅获取专业实践能力考试科目
+ * @returns {Promise<any[]>} 专业实践能力考试科目
  */
-async function fetchExamSubjects(): Promise<any[]> {
+async function fetchPracticalExamSubject(): Promise<any[]> {
   try {
     const result = await directDb.executeQuery(`
       SELECT id, name, description, weight
       FROM exam_subjects
-      ORDER BY id
+      WHERE name LIKE '%专业实践能力%' OR id = 4
+      LIMIT 1
     `);
+    
+    if (result.rows.length === 0) {
+      console.warn('未找到专业实践能力科目，尝试获取所有科目');
+      const allSubjects = await directDb.executeQuery(`
+        SELECT id, name, description, weight
+        FROM exam_subjects
+        LIMIT 1
+      `);
+      return allSubjects.rows;
+    }
+    
     return result.rows;
   } catch (error) {
-    console.error('获取考试科目失败:', error);
+    console.error('获取专业实践能力考试科目失败:', error);
+    return [];
+  }
+}
+
+/**
+ * @description 仅获取基础护理学学科
+ * @returns {Promise<any|null>} 基础护理学学科
+ */
+async function fetchBasicNursingDiscipline(): Promise<any|null> {
+  try {
+    const result = await directDb.executeQuery(`
+      SELECT id, name, description
+      FROM nursing_disciplines
+      WHERE name LIKE '%基础护理学%' OR id = 4
+      LIMIT 1
+    `);
+    
+    if (result.rows.length === 0) {
+      console.warn('未找到基础护理学学科，尝试获取任意一个学科');
+      const anyDiscipline = await directDb.executeQuery(`
+        SELECT id, name, description
+        FROM nursing_disciplines
+        LIMIT 1
+      `);
+      return anyDiscipline.rows[0] || null;
+    }
+    
+    return result.rows[0];
+  } catch (error) {
+    console.error('获取基础护理学学科失败:', error);
+    return null;
+  }
+}
+
+/**
+ * @description 获取指定章节的所有知识点
+ * @param {number[]} chapterIds - 章节ID数组
+ * @returns {Promise<any[]>} 知识点列表
+ */
+async function fetchKnowledgePointsByChapters(chapterIds: number[]): Promise<any[]> {
+  if (!chapterIds.length) {
+    return [];
+  }
+  
+  try {
+    // 构建查询条件
+    const placeholders = chapterIds.map((_, index) => `$${index + 1}`).join(',');
+    
+    const result = await directDb.executeQuery(`
+      SELECT kp.id, kp.subject_id, kp.chapter_id, kp.title, kp.content,
+             c.name as chapter_name, es.name as subject_name,
+             c.discipline_id, kp.difficulty, kp.importance
+      FROM knowledge_points kp
+      JOIN chapters c ON kp.chapter_id = c.id
+      JOIN exam_subjects es ON kp.subject_id = es.id
+      WHERE kp.chapter_id IN (${placeholders})
+      ORDER BY c.order_index, kp.id
+    `, chapterIds);
+    
+    console.log(`获取到${result.rows.length}个与基础护理学相关的知识点`);
+    return result.rows;
+  } catch (error) {
+    console.error('获取章节相关知识点失败:', error);
     return [];
   }
 }

@@ -191,10 +191,10 @@ export default function StudyPlanView() {
       // 为每个任务添加完成状态
       const plansWithStatus = result.data.dailyPlans.map((day: DailyPlan) => ({
         ...day,
-        tasks: day.tasks.map((task) => ({
+        tasks: day.tasks?.map((task) => ({
           ...task,
           isCompleted: false
-        }))
+        })) || []
       }));
       
       // 处理数据

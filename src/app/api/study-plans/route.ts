@@ -6,6 +6,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createStudyPlan as dbCreateStudyPlan } from '@/lib/services/study-plan-service';
+import { db } from '@/db';
+import { users } from '@/db/schema/users';
+import { eq } from 'drizzle-orm';
 
 /**
  * @description 创建备考规划API
@@ -33,6 +36,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: '缺少必要参数' },
         { status: 400 }
+      );
+    }
+    
+    // 验证用户是否存在
+    const userExists = await db.select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, typeof userId === 'string' ? parseInt(userId) : userId))
+      .limit(1);
+      
+    if (!userExists.length) {
+      console.error(`用户ID ${userId} 不存在`);
+      return NextResponse.json(
+        { error: '用户不存在', userId },
+        { status: 404 }
       );
     }
     

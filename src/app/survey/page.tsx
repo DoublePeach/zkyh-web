@@ -10,7 +10,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { SurveyFormData } from '@/types/survey';
 import { useAuthStore } from '@/store/use-auth-store';
-import { createStudyPlan } from '@/lib/db-client';
+import { createStudyPlan, generateStudyPlanAsync } from '@/lib/db-client';
+import { usePlanGenerationStore } from '@/store/use-plan-generation-store';
 
 export default function SurveyPage() {
   const router = useRouter();
@@ -84,34 +85,37 @@ export default function SurveyPage() {
     setLoading(true);
     
     try {
-      // 调用后端API创建备考规划
-      const planId = await createStudyPlan(user.id, formData);
+      // 通知状态管理开始生成
+      usePlanGenerationStore.getState().startGeneration(formData);
       
-      // 跳转到生成的备考规划页面
-      router.push(`/study-plan/${planId}`);
-      toast.success('备考规划生成成功！');
-    } catch (error) {
-      console.error('生成备考规划失败:', error);
+      // 调用异步API生成备考规划
+      const { taskId, estimatedTimeMs } = await generateStudyPlanAsync(user.id, formData);
       
-      // 为不同类型的错误提供更具体的反馈
-      if (error instanceof Error && error.message.includes('Internal Server Error')) {
-        toast.error('服务器连接超时，请稍后重试，系统将使用备用方案继续为您生成规划');
-        
-        // 再次尝试创建规划，通常会使用备用方案
-        try {
-          setTimeout(async () => {
-            const planId = await createStudyPlan(user.id, formData);
-            router.push(`/study-plan/${planId}`);
-            toast.success('已使用备用方案生成备考规划');
-          }, 2000);
-          return;
-        } catch (retryError) {
-          console.error('备用方案生成失败:', retryError);
-          toast.error('无法生成备考规划，请稍后重试');
-        }
-      } else {
-        toast.error('生成备考规划失败，请稍后重试');
+      // 保存taskId到localStorage，用于生成页面获取
+      localStorage.setItem('current_task_id', taskId);
+      
+      // 更新状态管理中的预计时间
+      const storeState = usePlanGenerationStore.getState();
+      if (storeState.estimatedTimeMs !== estimatedTimeMs) {
+        storeState.updateProgress(0); // 重置进度
       }
+      
+      // 跳转到生成进度页面
+      router.push('/generating');
+      toast.success('备考规划正在生成中，请稍候');
+    } catch (error) {
+      console.error('开始生成备考规划失败:', error);
+      
+      // 更新状态为失败
+      usePlanGenerationStore.getState().failPlanGeneration(
+        error instanceof Error ? error.message : '未知错误'
+      );
+      
+      // 显示错误信息
+      toast.error('开始生成备考规划失败，请稍后重试');
+      
+      // 根据需要，可能跳转到错误页面
+      router.push('/generating'); // 错误状态也会在生成页面显示
     } finally {
       setLoading(false);
     }

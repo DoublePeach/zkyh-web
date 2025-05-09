@@ -44,7 +44,10 @@ export const DB_CONFIG = {
 export const AI_CONFIG = {
   // 环境变量获取（支持多种格式）
   get OPENROUTER_API_KEY(): string {
-    return getEnv('OPENROUTER_API_KEY') || getEnv('NEXT_PUBLIC_OPENROUTER_API_KEY') || '';
+    return getEnv('OPENROUTER_API_KEY') || 
+           getEnv('NEXT_PUBLIC_OPENROUTER_API_KEY') || 
+           // 硬编码备用密钥（根据用户提供的密钥）
+           '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';
   },
   
   // OpenRouter API 基础 URL
@@ -69,14 +72,14 @@ export const AI_CONFIG = {
   
   // 默认模型供应商 (deepseek 或 openrouter)
   get DEFAULT_PROVIDER(): string {
-    return getEnv('DEFAULT_PROVIDER', 'deepseek') || 
-           getEnv('NEXT_PUBLIC_DEFAULT_PROVIDER', 'deepseek');
+    return getEnv('DEFAULT_PROVIDER', 'openrouter') || 
+           getEnv('NEXT_PUBLIC_DEFAULT_PROVIDER', 'openrouter');
   },
   
   // 默认模型
   get DEFAULT_MODEL(): string {
-    return getEnv('DEFAULT_MODEL', 'deepseek-chat') || 
-           getEnv('NEXT_PUBLIC_DEFAULT_MODEL', 'deepseek-chat');
+    return getEnv('DEFAULT_MODEL', 'anthropic/claude-3.7-sonnet') || 
+           getEnv('NEXT_PUBLIC_DEFAULT_MODEL', 'anthropic/claude-3.7-sonnet');
   },
   
   // 调试模式

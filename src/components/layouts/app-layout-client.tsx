@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { DrawerNav } from './drawer-nav';
 import React, { useEffect } from 'react';
+import PlanGenerationStatus from '@/components/shared/PlanGenerationStatus';
 
 interface AppLayoutClientProps {
   children: React.ReactNode;
@@ -14,9 +15,13 @@ export default function AppLayoutClient({ children }: AppLayoutClientProps) {
   // 判断当前路径是否为管理员页面或认证页面
   const isAdminPage = pathname?.startsWith('/admin');
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/register');
+  const isGeneratingPage = pathname?.startsWith('/generating');
   
   // 是否显示抽屉式导航
   const showNav = !isAdminPage && !isAuthPage;
+  
+  // 是否显示生成状态组件（在生成页面不需要显示）
+  const showGenerationStatus = !isGeneratingPage;
   
   // 确保页面可以正常滚动
   useEffect(() => {
@@ -38,6 +43,9 @@ export default function AppLayoutClient({ children }: AppLayoutClientProps) {
       <main className="flex-1 overflow-y-auto">
         {children}
       </main>
+      
+      {/* 备考规划生成状态 */}
+      {showGenerationStatus && <PlanGenerationStatus />}
     </div>
   );
 } 

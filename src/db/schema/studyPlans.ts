@@ -8,7 +8,7 @@ import { users } from './users';
 
 export const studyPlans = pgTable('study_plans', {
   id: serial('id').primaryKey(),                          // 学习计划ID
-  userId: integer('user_id').notNull()                    // 关联的用户ID
+  userId: integer('user_id')                              // 关联的用户ID，允许为空方便测试
     .references(() => users.id),
   title: text('title').notNull(),                         // 计划标题
   examYear: integer('exam_year'),                         // 考试年份

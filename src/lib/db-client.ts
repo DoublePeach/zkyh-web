@@ -139,4 +139,83 @@ export async function deleteStudyPlan(planId: number | string): Promise<boolean>
     console.error('删除备考规划失败:', error);
     throw error;
   }
+}
+
+/**
+ * 异步生成规划任务响应
+ */
+export interface GenerateTaskResponse {
+  taskId: string;
+  estimatedTimeMs: number;
+}
+
+/**
+ * 任务状态响应
+ */
+export interface TaskStatusResponse {
+  taskId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  startTime: number;
+  planId?: string | number;
+  error?: string;
+}
+
+/**
+ * @description 异步生成备考规划
+ * @param {number|string} userId - 用户ID
+ * @param {SurveyFormData} formData - 调查表单数据
+ * @returns {Promise<GenerateTaskResponse>} - 返回任务信息
+ */
+export async function generateStudyPlanAsync(userId: number | string, formData: SurveyFormData): Promise<GenerateTaskResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/study-plans/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId, formData }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`异步生成备考规划失败: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success || !data.data) {
+      throw new Error(data.error || '异步生成备考规划失败: 无效的API响应');
+    }
+    
+    return data.data;
+  } catch (error) {
+    console.error('异步生成备考规划失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * @description 获取生成任务状态
+ * @param {string} taskId - 任务ID
+ * @returns {Promise<TaskStatusResponse>} - 返回任务状态
+ */
+export async function getGenerationTaskStatus(taskId: string): Promise<TaskStatusResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/study-plans/generate?taskId=${taskId}`);
+    
+    if (!response.ok) {
+      throw new Error(`获取任务状态失败: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success || !data.data) {
+      throw new Error(data.error || '获取任务状态失败: 无效的API响应');
+    }
+    
+    return data.data;
+  } catch (error) {
+    console.error('获取任务状态失败:', error);
+    throw error;
+  }
 } 

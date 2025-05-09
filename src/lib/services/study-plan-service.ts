@@ -29,8 +29,18 @@ export async function createStudyPlan(userId: number | string, formData: SurveyF
   try {
     console.log('开始创建备考规划...');
     
-    // 确保userId是数字类型
-    const userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+    // 确保userId是数字类型或null（测试环境）
+    let userIdNum = null;
+    if (userId) {
+      userIdNum = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+      // 如果转换后不是有效数字，则设置为null
+      if (isNaN(userIdNum)) {
+        console.warn('提供的用户ID无效，将设置为null');
+        userIdNum = null;
+      }
+    } else {
+      console.warn('未提供用户ID，将创建无用户关联的备考规划（仅测试用）');
+    }
     
     // 1. 调用AI基于数据库数据生成备考方案
     console.log('正在调用AI基于数据库数据生成备考方案...');

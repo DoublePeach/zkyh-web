@@ -1,52 +1,61 @@
 /**
- * @description 管理单个提示词文件的API
+ * @description 提示词文件操作API
  * @author 郝桃桃
- * @date 2024-10-12
+ * @date 2024-10-01
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs/promises';
 import path from 'path';
-import { withAdminAuth } from "@/lib/auth/admin-auth";
+import fs from 'fs';
+import { withAdminAuth } from '@/lib/auth/admin-auth';
 
 // 提示词文件保存目录
 const TIPS_DIR = path.resolve(process.cwd(), 'preparation-plan-tips');
 
-/**
- * 获取单个提示词文件内容
- */
-async function getHandler(req: NextRequest, context: { params: { id: string } }) {
+// 获取提示词文件
+export const GET = withAdminAuth(async (
+  req: NextRequest, 
+  context: any
+) => {
+  // 获取提示词
+  const { id } = context.params;
+  
   try {
-    const filename = context.params.id;
+    // 查找提示词文件
+    const promptsDir = path.join(process.cwd(), 'preparation-plan-tips');
     
-    // 验证文件名是否合法
-    if (!filename || filename.includes('..')) {
+    // 检查目录是否存在
+    if (!fs.existsSync(promptsDir)) {
       return NextResponse.json(
-        { success: false, message: '无效的文件名' },
-        { status: 400 }
-      );
-    }
-    
-    const filePath = path.join(TIPS_DIR, filename);
-    
-    // 验证文件是否存在
-    try {
-      await fs.access(filePath);
-    } catch (error) {
-      return NextResponse.json(
-        { success: false, message: '文件不存在' },
+        { success: false, message: '提示词目录不存在' },
         { status: 404 }
       );
     }
     
+    // 获取文件列表
+    const files = fs.readdirSync(promptsDir);
+    
+    // 查找匹配的文件
+    const targetFile = files.find((file: string) => file.includes(id));
+    
+    if (!targetFile) {
+      return NextResponse.json(
+        { success: false, message: '提示词文件不存在' },
+        { status: 404 }
+      );
+    }
+    
+    // 获取文件信息
+    const filePath = path.join(promptsDir, targetFile);
+    const stats = fs.statSync(filePath);
+    
     // 读取文件内容
-    const content = await fs.readFile(filePath, 'utf8');
-    const stats = await fs.stat(filePath);
+    const content = fs.readFileSync(filePath, 'utf-8');
     
     return NextResponse.json({
       success: true,
       data: {
-        filename,
+        filename: targetFile,
         content,
         size: stats.size,
         createdAt: stats.birthtime,
@@ -54,64 +63,60 @@ async function getHandler(req: NextRequest, context: { params: { id: string } })
       }
     });
   } catch (error) {
-    console.error('获取提示词文件内容失败:', error);
+    console.error('获取提示词失败:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        message: '获取文件内容失败', 
-        error: error instanceof Error ? error.message : String(error) 
-      },
+      { success: false, message: '获取提示词失败' },
       { status: 500 }
     );
   }
-}
+});
 
-/**
- * 删除提示词文件
- */
-async function deleteHandler(req: NextRequest, context: { params: { id: string } }) {
+// 删除提示词文件
+export const DELETE = withAdminAuth(async (
+  req: NextRequest, 
+  context: any
+) => {
+  // 删除提示词
+  const { id } = context.params;
+  
   try {
-    const filename = context.params.id;
+    // 查找提示词文件
+    const promptsDir = path.join(process.cwd(), 'preparation-plan-tips');
     
-    // 验证文件名是否合法
-    if (!filename || filename.includes('..')) {
+    // 检查目录是否存在
+    if (!fs.existsSync(promptsDir)) {
       return NextResponse.json(
-        { success: false, message: '无效的文件名' },
-        { status: 400 }
+        { success: false, message: '提示词目录不存在' },
+        { status: 404 }
       );
     }
     
-    const filePath = path.join(TIPS_DIR, filename);
+    // 获取文件列表
+    const files = fs.readdirSync(promptsDir);
     
-    // 验证文件是否存在
-    try {
-      await fs.access(filePath);
-    } catch (error) {
+    // 查找匹配的文件
+    const targetFile = files.find((file: string) => file.includes(id));
+    
+    if (!targetFile) {
       return NextResponse.json(
-        { success: false, message: '文件不存在' },
+        { success: false, message: '提示词文件不存在' },
         { status: 404 }
       );
     }
     
     // 删除文件
-    await fs.unlink(filePath);
+    const filePath = path.join(promptsDir, targetFile);
+    fs.unlinkSync(filePath);
     
     return NextResponse.json({
       success: true,
-      message: '文件删除成功'
+      message: '删除提示词成功'
     });
   } catch (error) {
-    console.error('删除提示词文件失败:', error);
+    console.error('删除提示词失败:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        message: '删除文件失败', 
-        error: error instanceof Error ? error.message : String(error) 
-      },
+      { success: false, message: '删除提示词失败' },
       { status: 500 }
     );
   }
-}
-
-export const GET = withAdminAuth(getHandler);
-export const DELETE = withAdminAuth(deleteHandler); 
+}); 
