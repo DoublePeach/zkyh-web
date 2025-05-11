@@ -9,71 +9,13 @@ import { createStudyPlan as dbCreateStudyPlan } from '@/lib/services/study-plan-
 import { db } from '@/db';
 import { users } from '@/db/schema/users';
 import { eq } from 'drizzle-orm';
-import * as fs from 'fs';
-import * as path from 'path';
-
-// 用于存储进行中的生成任务
-type GenerationTask = {
-  id: string;
-  userId: number | string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: number;
-  startTime: number;
-  planId?: string | number;
-  error?: string;
-};
-
-// 任务存储路径
-const TASKS_DIR = path.join(process.cwd(), 'preparation-plan-tips', 'tasks');
-
-// 确保任务存储目录存在
-try {
-  if (!fs.existsSync(TASKS_DIR)) {
-    fs.mkdirSync(TASKS_DIR, { recursive: true });
-  }
-} catch (error) {
-  console.error('创建任务存储目录失败:', error);
-}
-
-// 保存任务到文件
-function saveTask(task: GenerationTask): void {
-  try {
-    const filePath = path.join(TASKS_DIR, `${task.id}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(task, null, 2), 'utf8');
-  } catch (error) {
-    console.error(`保存任务(${task.id})失败:`, error);
-  }
-}
-
-// 从文件获取任务
-function getTask(taskId: string): GenerationTask | null {
-  try {
-    const filePath = path.join(TASKS_DIR, `${taskId}.json`);
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
-    const taskData = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(taskData) as GenerationTask;
-  } catch (error) {
-    console.error(`获取任务(${taskId})失败:`, error);
-    return null;
-  }
-}
-
-// 更新任务状态
-function updateTask(taskId: string, updates: Partial<GenerationTask>): boolean {
-  try {
-    const task = getTask(taskId);
-    if (!task) return false;
-    
-    const updatedTask = { ...task, ...updates };
-    saveTask(updatedTask);
-    return true;
-  } catch (error) {
-    console.error(`更新任务(${taskId})失败:`, error);
-    return false;
-  }
-}
+import {
+  GenerationTask,
+  saveTask,
+  getTask,
+  updateTask,
+  deleteTaskFile
+} from '@/lib/services/task-generation-service';
 
 /**
  * @description 获取生成状态
@@ -119,7 +61,15 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * @description 开始生成规划（异步）
+ * @description 开始生成备考规划（异步）。接收用户ID和调研表单数据，
+ *              创建一个后台任务来生成规划，并立即返回任务ID给客户端。
+ * @param {NextRequest} request - Next.js请求对象，包含用户ID和formData。
+ * @returns {Promise<NextResponse>} - 包含任务ID或错误信息的响应。
+ * @example body
+ * { 
+ *   "userId": 123, 
+ *   "formData": { ... } 
+ * }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -206,14 +156,11 @@ export async function POST(request: NextRequest) {
         });
         
         // 保留任务记录一段时间，然后删除（防止文件过多）
-        setTimeout(() => {
+        setTimeout(async () => {
           try {
-            const filePath = path.join(TASKS_DIR, `${taskId}.json`);
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-            }
+            await deleteTaskFile(taskId);
           } catch (deleteError) {
-            console.error(`删除任务文件(${taskId})失败:`, deleteError);
+            console.error(`API路由中尝试删除任务文件(${taskId})时也遇到问题:`, deleteError);
           }
         }, 24 * 60 * 60 * 1000); // 24小时后删除
       } catch (error) {

@@ -4,10 +4,13 @@
 
 ## 技术栈
 
-- **前端**：NextJS, React, TailwindCSS
+- **前端**：NextJS (v15.3.1), React (v19), TailwindCSS (v4), Shadcn UI, Lucide Icons
+- **状态管理与数据获取**：Zustand (v5), React Query (v5), SWR (v2)
+- **表单处理**：React Hook Form (v7), Zod (v3)
 - **后端**：NextJS API路由
 - **数据库**：PostgreSQL
-- **ORM**：Drizzle ORM
+- **ORM**：Drizzle ORM (v0.43.1)
+- **AI集成**：OpenAI SDK (v4)
 - **开发工具**：TypeScript, ESLint
 
 
@@ -37,6 +40,12 @@
    ```
    DATABASE_URL=postgresql://postgres:password@localhost:5432/zkyh_db
    NEXT_PUBLIC_APP_URL=http://localhost:3000
+   # 可选：如果需要连接到护理助手APP的外部MySQL数据库 (用于护理助手集成功能)
+   # MYSQL_HOST=localhost
+   # MYSQL_PORT=3306
+   # MYSQL_USER=root
+   # MYSQL_PASSWORD=your_password
+   # MYSQL_DATABASE=nursing_assistant
    ```
 
 4. 数据库迁移:
@@ -182,7 +191,7 @@ Q8: 您是否需要设置固定休息日？
 ● 动态表单路径： ○ 根据前一问题的回答动态调整后续问题（如科目选择、学习基础评估） ○ 医疗、护理、药技类别将展示不同的问题路径 ○ 针对不同职称级别提供定向问题
 4. AI 驱动的个性化学习计划生成
 ● 学习计划生成：
-  ○ 接入 OpenAI API 进行计划生成
+  ○ 接入 OpenAI API (使用 `openai` SDK) 进行计划生成
   ○ 使用策略模式设计算法，便于未来替换不同策略
   ○ 基于用户信息、考试大纲、难度系数等生成计划
 ● 计划结构化输出：
@@ -229,25 +238,25 @@ Q8: 您是否需要设置固定休息日？
 技术规范
 前端技术栈
 1. 框架与核心技术：
-  ○ Next.js 14+ (App Router)
-  ○ React 18
+  ○ Next.js 15+ (App Router)
+  ○ React 19+
   ○ TypeScript
 2. UI 与样式：
-  ○ Tailwind CSS 
+  ○ Tailwind CSS (v4)
   ○ Shadcn UI 组件库
   ○ Lucide Icons 图标库
   ○ 响应式设计（移动端优先）
 3. 状态管理与数据获取：
-  ○ Zustand 状态管理库
-  ○ React Query 数据获取与缓存
-  ○ SWR 实时数据更新
+  ○ Zustand 状态管理库 (v5)
+  ○ React Query 数据获取与缓存 (v5)
+  ○ SWR 实时数据更新 (v2)
 4. 表单处理：
-  ○ React Hook Form
-  ○ Zod 表单验证
+  ○ React Hook Form (v7)
+  ○ Zod 表单验证 (v3)
 后端技术栈
 1. API 框架：
-  ○ NestJS 框架
-  ○ Swagger API 文档
+  ○ Next.js API Routes (当前实现)
+  ○ (API 文档可考虑使用如 OpenAPI规范配合相关工具生成)
 2. 数据库技术：
   ○ PostgreSQL 数据库
   ○ Drizzle ORM

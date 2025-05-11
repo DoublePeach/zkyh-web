@@ -6,18 +6,15 @@
  * @date 2023-10-01
  */
 
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/use-auth-store';
 import { useStudyModeStore, studyModeConfig } from '@/store/use-study-mode-store';
-import { BookOpen, BarChart, /* Trophy, */ Clock, ChevronRight, ArrowRight, Sparkles, BookMarked, Calendar, GraduationCap, Award, Target } from 'lucide-react';
+import { BookOpen, Clock, ArrowRight, Sparkles, BookMarked, Calendar, GraduationCap, Award, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import Image from 'next/image';
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { getUserStudyPlans } from '@/lib/db-client';
 import type { studyPlans } from '@/db/schema'; 
 import type { InferSelectModel } from 'drizzle-orm'; 
-import { LoginModal } from '@/components/forms/login-modal';
 import { useRouter } from 'next/navigation';
 
 type StudyPlan = InferSelectModel<typeof studyPlans>;
@@ -76,7 +73,6 @@ function HomePageContent({ router }: { router: ReturnType<typeof useRouter> }) {
   const { currentMode, loadUserMode } = useStudyModeStore();
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showAutoLogin, setShowAutoLogin] = useState(true);
 
   // 路由导航函数，通过router.push进行跳转，避免Link组件问题
   const handleNavigation = useCallback((href: string, e?: React.MouseEvent) => {
@@ -113,9 +109,9 @@ function HomePageContent({ router }: { router: ReturnType<typeof useRouter> }) {
     fetchStudyPlans();
     
     // 如果用户已登录，不显示自动登录模态框
-    if (isAuthenticated) {
-      setShowAutoLogin(false);
-    }
+    // if (isAuthenticated) {
+    //   setShowAutoLogin(false);
+    // }
   }, [isAuthenticated, user, loadUserMode]);
   
   // 备考概况数据

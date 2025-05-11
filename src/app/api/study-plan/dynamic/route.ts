@@ -16,29 +16,6 @@ import { SurveyFormData } from '@/types/survey';
 const isMcpEnabled = false; // 设置为false则强制使用直接数据库连接
 
 /**
- * @description 带故障转移的执行SQL查询
- */
-async function fallbackQuery(sql: string, params: any[] = []) {
-  try {
-    // 优先尝试直接数据库连接
-    if (!isMcpEnabled) {
-      return await directDb.executeQuery(sql, params);
-    }
-    
-    // 尝试MCP连接
-    try {
-      return await mcpDb.executeQuery(sql);
-    } catch (mcpError) {
-      console.warn('MCP连接失败，回退到直接数据库连接', mcpError);
-      return await directDb.executeQuery(sql, params);
-    }
-  } catch (error) {
-    console.error('数据库查询失败:', error);
-    throw error;
-  }
-}
-
-/**
  * @description 带故障转移的获取考试学科
  */
 async function fallbackFetchExamSubjects() {
@@ -62,7 +39,7 @@ async function fallbackFetchExamSubjects() {
 /**
  * @description 检查数据库连接状态
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // 获取数据库连接字符串信息（脱敏处理）
     const connectionInfo = DB_CONFIG.PG_CONNECTION_STRING.replace(/:[^@]*@/, ':***@');

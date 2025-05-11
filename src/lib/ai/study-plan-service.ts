@@ -254,10 +254,10 @@ export async function generateStudyPlanFromDatabase(surveyData: SurveyFormData):
 
 /**
  * @description 从数据库构建学习资料数据 - 专注于基础护理学
- * @param {SurveyFormData} surveyData - 用户表单数据
+ * @param {SurveyFormData} _surveyData - 用户表单数据 (renamed as unused)
  * @returns {Promise<LearningMaterial>} 学习资料数据
  */
-async function buildLearningMaterialsData(surveyData: SurveyFormData): Promise<LearningMaterial> {
+async function buildLearningMaterialsData(_surveyData: SurveyFormData): Promise<LearningMaterial> {
   try {
     // 仅获取专业实践能力考试科目
     const examSubjects = await fetchPracticalExamSubject();
@@ -397,25 +397,6 @@ async function fetchKnowledgePointsByChapters(chapterIds: number[]): Promise<any
 }
 
 /**
- * @description 获取所有护理学科
- * @returns {Promise<any[]>} 护理学科列表
- */
-async function fetchNursingDisciplines(): Promise<any[]> {
-  try {
-    const result = await directDb.executeQuery(`
-      SELECT id, name, description
-      FROM nursing_disciplines
-      ORDER BY 
-        CASE WHEN id = 4 THEN 0 ELSE id END  -- 基础护理学(ID=4)排在最前面
-    `);
-    return result.rows;
-  } catch (error) {
-    console.error('获取护理学科失败:', error);
-    return [];
-  }
-}
-
-/**
  * @description 获取特定护理学科的所有章节
  * @param {number} disciplineId - 护理学科ID
  * @returns {Promise<any[]>} 章节列表
@@ -435,55 +416,6 @@ async function fetchChaptersByDiscipline(disciplineId: number): Promise<any[]> {
     return result.rows;
   } catch (error) {
     console.error(`获取护理学科(ID: ${disciplineId})的章节失败:`, error);
-    return [];
-  }
-}
-
-/**
- * @description 获取所有知识点，优先获取专业实践能力和基础护理学相关的知识点
- * @returns {Promise<any[]>} 所有知识点列表
- */
-async function fetchKnowledgePoints(): Promise<any[]> {
-  try {
-    // 优先获取专业实践能力(ID=4)相关的知识点
-    const result = await directDb.executeQuery(`
-      SELECT kp.id, kp.subject_id, kp.chapter_id, kp.title, kp.content,
-             c.name as chapter_name, es.name as subject_name,
-             c.discipline_id
-      FROM knowledge_points kp
-      LEFT JOIN chapters c ON kp.chapter_id = c.id
-      LEFT JOIN exam_subjects es ON kp.subject_id = es.id
-      ORDER BY 
-        CASE WHEN kp.subject_id = 4 THEN 0 ELSE kp.subject_id END,  -- 专业实践能力科目(ID=4)排在最前面
-        CASE WHEN c.discipline_id = 4 THEN 0 ELSE c.discipline_id END,  -- 基础护理学(ID=4)排在最前面
-        kp.id
-      LIMIT 150  -- 增加获取的知识点数量，确保获取足够的基础护理学知识点
-    `);
-    return result.rows;
-  } catch (error) {
-    console.error('获取知识点失败:', error);
-    return [];
-  }
-}
-
-/**
- * @description 获取所有题库，优先获取专业实践能力科目的题库
- * @returns {Promise<any[]>} 所有题库列表
- */
-async function fetchTestBanks(): Promise<any[]> {
-  try {
-    const result = await directDb.executeQuery(`
-      SELECT tb.id, tb.subject_id, tb.name, tb.description, tb.type, tb.year,
-             es.name as subject_name
-      FROM test_banks tb
-      JOIN exam_subjects es ON tb.subject_id = es.id
-      ORDER BY 
-        CASE WHEN tb.subject_id = 4 THEN 0 ELSE tb.subject_id END,  -- 专业实践能力科目(ID=4)排在最前面
-        tb.id
-    `);
-    return result.rows;
-  } catch (error) {
-    console.error('获取题库失败:', error);
     return [];
   }
 }

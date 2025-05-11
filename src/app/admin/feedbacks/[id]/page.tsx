@@ -6,8 +6,8 @@
  * @date 2024-05-10
  */
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -48,8 +48,12 @@ const STATUS_COLORS: Record<string, string> = {
   ignored: 'bg-gray-100 text-gray-800 hover:bg-gray-200',
 };
 
+/**
+ * @component FeedbackDetailPage
+ * @description 管理员查看和处理单个用户反馈的详情页面。
+ * @returns {JSX.Element}
+ */
 export default function FeedbackDetailPage() {
-  const router = useRouter();
   const params = useParams();
   const id = params.id as string;
   
@@ -60,34 +64,43 @@ export default function FeedbackDetailPage() {
   const [adminNotes, setAdminNotes] = useState<string>('');
   
   // 获取反馈详情
-  const fetchFeedbackDetail = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/feedbacks/${id}`);
-      
-      if (!response.ok) {
-        throw new Error('获取反馈详情失败');
+  useEffect(() => {
+    const fetchFeedbackDetailInternal = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/feedbacks/${id}`);
+        
+        if (!response.ok) {
+          throw new Error('获取反馈详情失败');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setFeedback(result.data);
+          setStatus(result.data.status);
+          setAdminNotes(result.data.adminNotes || '');
+        } else {
+          throw new Error(result.error || '获取反馈详情失败');
+        }
+      } catch (error: any) {
+        console.error('获取反馈详情失败:', error);
+        toast.error(error.message || '获取反馈详情失败，请稍后再试');
+      } finally {
+        setLoading(false);
       }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setFeedback(result.data);
-        setStatus(result.data.status);
-        setAdminNotes(result.data.adminNotes || '');
-      } else {
-        throw new Error(result.error || '获取反馈详情失败');
-      }
-    } catch (error: any) {
-      console.error('获取反馈详情失败:', error);
-      toast.error(error.message || '获取反馈详情失败，请稍后再试');
-    } finally {
-      setLoading(false);
+    };
+
+    if (id) {
+      fetchFeedbackDetailInternal();
     }
-  };
+  }, [id]);
   
-  // 更新反馈状态
-  const updateFeedbackStatus = async () => {
+  /**
+   * @description 更新用户反馈的状态和管理员备注。
+   * @returns {Promise<void>}
+   */
+  const updateFeedbackStatus = useCallback(async () => {
     try {
       setSaving(true);
       
@@ -119,20 +132,32 @@ export default function FeedbackDetailPage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [id, status, adminNotes, setSaving]);
   
-  // 获取状态对应的样式类
+  /**
+   * @description 根据反馈状态值获取对应的CSS类名。
+   * @param {string} statusValue - 反馈状态值。
+   * @returns {string} - CSS类名。
+   */
   const getStatusClass = (statusValue: string) => {
     return STATUS_COLORS[statusValue] || 'bg-gray-100 text-gray-800';
   };
   
-  // 获取状态文本
+  /**
+   * @description 根据反馈状态值获取对应的显示文本。
+   * @param {string} statusValue - 反馈状态值。
+   * @returns {string} - 显示文本。
+   */
   const getStatusLabel = (statusValue: string) => {
     const option = STATUS_OPTIONS.find(opt => opt.value === statusValue);
     return option ? option.label : '未知状态';
   };
   
-  // 格式化时间
+  /**
+   * @description 格式化日期字符串为 "YYYY/MM/DD HH:mm:ss" 的格式。
+   * @param {string} dateString - ISO格式的日期字符串。
+   * @returns {string} - 格式化后的日期字符串。
+   */
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('zh-CN', {
@@ -145,7 +170,11 @@ export default function FeedbackDetailPage() {
     }).format(date);
   };
   
-  // 获取满意度评价文本
+  /**
+   * @description 根据满意度评分获取对应的文本描述。
+   * @param {number} score - 满意度评分 (1-10)。
+   * @returns {string} - 满意度文本描述。
+   */
   const getSatisfactionText = (score: number) => {
     if (score >= 9) return '非常满意';
     if (score >= 7) return '满意';
@@ -154,7 +183,11 @@ export default function FeedbackDetailPage() {
     return '非常不满意';
   };
   
-  // 获取满意度评价颜色
+  /**
+   * @description 根据满意度评分获取对应的文本颜色CSS类。
+   * @param {number} score - 满意度评分 (1-10)。
+   * @returns {string} - 文本颜色CSS类。
+   */
   const getSatisfactionColor = (score: number) => {
     if (score >= 9) return 'text-green-600';
     if (score >= 7) return 'text-blue-600';
@@ -162,13 +195,6 @@ export default function FeedbackDetailPage() {
     if (score >= 3) return 'text-orange-600';
     return 'text-red-600';
   };
-  
-  // 初始化加载
-  useEffect(() => {
-    if (id) {
-      fetchFeedbackDetail();
-    }
-  }, [id]);
   
   if (loading) {
     return (

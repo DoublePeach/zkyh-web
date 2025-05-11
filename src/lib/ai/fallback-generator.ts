@@ -30,25 +30,6 @@ const PRACTICAL_MODULES = [
 ];
 
 /**
- * @description 生成护理学习模块列表
- * @returns {Array<{title: string, description: string}>} 模块列表
- */
-function getNursingModules(): Array<{title: string, description: string}> {
-  return [
-    { title: '护理学基础', description: '核心护理概念和基本理论' },
-    { title: '健康评估', description: '全面的患者评估技能与方法' },
-    { title: '内科护理学', description: '内科疾病的护理知识与技能' },
-    { title: '外科护理学', description: '外科疾病与手术护理' },
-    { title: '妇产科护理学', description: '妇女保健与产科护理' },
-    { title: '儿科护理学', description: '儿童生长发育与疾病护理' },
-    { title: '急危重症护理', description: '急危重症患者的护理与抢救' },
-    { title: '老年护理学', description: '老年人健康特点与护理' },
-    { title: '药理学基础', description: '药物作用机制与应用' },
-    { title: '护理管理', description: '护理质量与安全管理' }
-  ];
-}
-
-/**
  * @description 生成日期字符串
  * @param {number} dayOffset - 距今天的偏移天数
  * @returns {string} 日期字符串 (YYYY-MM-DD)
@@ -101,7 +82,6 @@ export function generateLocalStudyPlan(
   // 计算各阶段天数
   const phase1Days = Math.floor(daysUntilExam * 0.4);
   const phase2Days = Math.floor(daysUntilExam * 0.3);
-  const phase3Days = daysUntilExam - phase1Days - phase2Days;
   
   // 创建暖心陪伴风格的总览文字
   const overviewText = `亲爱的备考小伙伴，看到你为${titleLevel}考试制定的学习计划，我感到非常欣慰。距离考试还有${daysUntilExam}天，我们有充足的时间一步步打好基础。接下来的${phase1Days}天，我们将一起探索基础护理学的奥秘，逐步构建你的专业知识体系。记住，每一步的努力都是向着目标迈进的重要一步，相信自己，你可以的！`;
@@ -275,11 +255,6 @@ export function generateLocalStudyPlan(
     
     // 生成任务
     const tasks = [];
-    
-    // 温馨的学习气氛描述
-    const warmGreeting = isWeekend ? 
-      "今天是周末，我们可以安排更多的学习时间，学习节奏可以更从容一些～" : 
-      "今天我们继续前进，每天的进步积累起来就是最大的收获！";
     
     // 根据阶段生成任务
     if (phaseId === 1) {

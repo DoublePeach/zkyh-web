@@ -13,10 +13,10 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, CalendarDays, BookOpen, Star, ArrowRight, Trash, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, BookOpen, Star, ArrowRight, Trash, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
 import { deleteStudyPlan } from '@/lib/db-client';
@@ -281,11 +281,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
   
   // 切换展开/折叠状态
   const toggleSection = (sectionId: number) => {
-    if (expandedSection === sectionId) {
-      setExpandedSection(null);
-    } else {
-      setExpandedSection(sectionId);
-    }
+    setExpandedSection(expandedSection === sectionId ? null : sectionId);
   };
   
   if (loading) {
@@ -308,23 +304,6 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
       </div>
     );
   }
-  
-  // 计算总体学习进度
-  const getTotalProgress = (): number => {
-    if (!dailyPlans || !dailyPlans.length) return 0;
-    
-    let totalTasks = 0;
-    let completedTasks = 0;
-    
-    dailyPlans.forEach(day => {
-      if (day.tasks && day.tasks.length) {
-        totalTasks += day.tasks.length;
-        completedTasks += day.tasks.filter((t) => t.isCompleted).length;
-      }
-    });
-    
-    return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-  };
   
   // 确保数组存在
   const safePhases = phases || [];
@@ -442,7 +421,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
                 <p className="mb-4 whitespace-pre-line">{plan.overview || (plan.planData && plan.planData.overview)}</p>
               ) : (
                 <>
-                  <p className="mb-4">您的目标是在2026年4月通过初级护师职称考试，根据您选择的"通关模式"生成以下具体备考规划，请查收～</p>
+                  <p className="mb-4">您的目标是在2026年4月通过初级护师职称考试，根据您选择的&quot;通关模式&quot;生成以下具体备考规划，请查收～</p>
                   
                   <div className="bg-blue-50 p-4 rounded-lg mb-4">
                     <p className="mb-2 text-gray-700">学习将分为3个阶段(不同难度对应不同的阶段):</p>

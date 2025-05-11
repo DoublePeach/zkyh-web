@@ -9,12 +9,16 @@
 ```
 src/lib/ai/
 ├── index.ts                 # 统一导出入口
-├── api-client.ts            # API调用客户端
+├── api-client.ts            # API调用客户端 (例如 DeepSeek, OpenRouter)
 ├── study-plan-service.ts    # 学习规划服务主入口
 ├── fallback-generator.ts    # 本地备选方案生成器
-└── templates/               # 提示词模板
-    └── study-plan-prompt.ts # 备考规划提示词模板
+├── templates/               # 提示词模板
+│   └── study-plan-prompt.ts # 备考规划提示词模板 (当前主要使用)
+├── processors/              # AI返回结果的处理器
+└── legacy_backup/           # 旧版AI模块文件备份 (由 cleanup-ai-module.sh 创建)
 ```
+
+(备注: `src/lib/ai/`目录下还有一个 `README.md` 文件，提供了该模块更详细的内部结构和维护说明，包括对 `legacy_backup/` 中具体废弃文件的描述。)
 
 ## 主要改进
 
@@ -73,9 +77,10 @@ const response = await callAIAPI(prompt);
 
 ## 维护建议
 
-1. **添加新提示词模板**：在`templates`目录下创建新的模板文件
-2. **更新API调用**：在`api-client.ts`中修改或添加新的API调用方法
-3. **增强备选方案**：在`fallback-generator.ts`中改进本地生成逻辑
+1. **添加新提示词模板**：在`templates`目录下创建新的模板文件。当前主要提示词在`templates/study-plan-prompt.ts`。
+2. **更新API调用**：在`api-client.ts`中修改或添加新的API调用方法。该文件处理与不同AI服务（如DeepSeek, OpenRouter等）的通信。
+3. **增强备选方案**：在`fallback-generator.ts`中改进本地生成逻辑。导出的 `generateLocalStudyPlan` 函数可用于此目的。
+4. **处理AI输出**：如果AI的输出格式需要新的处理逻辑，可以在 `processors/` 目录下添加或修改处理器。
 
 ## 清理旧文件
 
@@ -89,4 +94,4 @@ chmod +x scripts/cleanup-ai-module.sh
 ./scripts/cleanup-ai-module.sh
 ```
 
-这将把旧文件移动到备份目录，以确保在需要时可以恢复。 
+这将把旧文件（如 `db-router.js`, `db-router.ts`, `db-study-plan.ts`, `openrouter.ts`）移动到 `src/lib/ai/legacy_backup/` 备份目录，以确保在需要时可以恢复，并保持当前工作目录的整洁。 

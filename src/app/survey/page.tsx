@@ -1,6 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+/**
+ * @description 用户调研页面，用于收集用户备考信息以生成个性化学习计划。
+ * @author 郝桃桃
+ * @date 2024-07-15 // Assumed date, please update if incorrect
+ */
+
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -10,9 +16,15 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { SurveyFormData } from '@/types/survey';
 import { useAuthStore } from '@/store/use-auth-store';
-import { createStudyPlan, generateStudyPlanAsync } from '@/lib/db-client';
+import { generateStudyPlanAsync } from '@/lib/db-client';
 import { usePlanGenerationStore } from '@/store/use-plan-generation-store';
 
+/**
+ * @component SurveyPage
+ * @description 一个多步骤的表单页面，引导用户输入备考相关的目标、水平、可用时间等信息，
+ *              最终用于生成个性化的学习计划。
+ * @returns {JSX.Element}
+ */
 export default function SurveyPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
@@ -53,12 +65,20 @@ export default function SurveyPage() {
     weekendHours: '<2', // 周末每天学习小时数
   });
   
-  // 更新基本表单数据
+  /**
+   * @description 更新表单状态中的特定字段值。
+   * @param {keyof SurveyFormData} key - 需要更新的字段名。
+   * @param {string} value - 新的字段值。
+   * @returns {void}
+   */
   const updateFormData = (key: keyof SurveyFormData, value: string) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
   
-  // 处理下一步
+  /**
+   * @description 处理进入下一步或触发表单提交的逻辑。
+   * @returns {void}
+   */
   const handleNext = () => {
     if (step < 2) {
       setStep(s => s + 1);
@@ -67,14 +87,21 @@ export default function SurveyPage() {
     }
   };
   
-  // 处理上一步
+  /**
+   * @description 处理返回上一步的逻辑。
+   * @returns {void}
+   */
   const handlePrevious = () => {
     if (step > 1) {
       setStep(s => s - 1);
     }
   };
   
-  // 生成备考规划
+  /**
+   * @description 提交表单数据并启动学习计划的异步生成流程。
+   *              处理用户认证、加载状态、API调用、本地存储及页面导航。
+   * @returns {Promise<void>}
+   */
   const generatePlan = async () => {
     if (!isAuthenticated || !user) {
       toast.error('请先登录后再生成备考规划');
@@ -121,12 +148,18 @@ export default function SurveyPage() {
     }
   };
   
-  // 进度条宽度计算
+  /**
+   * @description 计算当前步骤在总步骤中的进度百分比字符串。
+   * @returns {string} - 例如 "50%"。
+   */
   const progressWidth = () => {
     return `${(step / 2) * 100}%`;
   };
   
-  // 计算距离考试的天数
+  /**
+   * @description 计算从今天到固定考试日期（2026年4月11日）的天数。
+   * @returns {number} - 剩余天数，至少为1。
+   */
   const getDaysUntilExam = () => {
     // 创建考试日期对象 - 2026年4月11-12日
     const examDate = new Date(2026, 3, 11);

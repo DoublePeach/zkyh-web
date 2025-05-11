@@ -1,13 +1,12 @@
 'use client';
 
 /**
- * @description 备考规划列表页面 - 学习中心入口
+ * @description 备考规划列表页面，用户可以在此页面查看、创建和管理自己的学习规划。
  * @author 郝桃桃
- * @date 2024-06-25
+ * @date 2024-07-15
  */
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Card, 
@@ -37,12 +36,25 @@ import { FeedbackDialog } from '@/components/forms/feedback-dialog';
 
 type StudyPlan = InferSelectModel<typeof studyPlans>;
 
-// 带Suspense的路由提供器
+/**
+ * @component RouterProvider
+ * @description 带Suspense的路由提供器，确保子组件能访问到 `useRouter` 的实例。
+ * @param {object} props - 组件属性
+ * @param {function(router: ReturnType<typeof useRouter>): React.ReactNode} props.children - 一个函数，接收router实例并返回React节点。
+ * @returns {JSX.Element}
+ */
 function RouterProvider({ children }: { children: (router: ReturnType<typeof useRouter>) => React.ReactNode }) {
   const router = useRouter();
   return <>{children(router)}</>;
 }
 
+/**
+ * @component StudyPlansContent
+ * @description 学习规划列表页面的主要内容组件，负责获取和展示用户的学习规划。
+ * @param {object} props - 组件属性
+ * @param {ReturnType<typeof useRouter>} props.router - Next.js的router实例。
+ * @returns {JSX.Element}
+ */
 function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> }) {
   const { isAuthenticated, user } = useAuthStore();
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
@@ -50,6 +62,12 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
   const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null);
   
   // 导航处理函数
+  /**
+   * @description 处理页面导航
+   * @param {string} href - 目标路径
+   * @param {React.MouseEvent} [e] - 可选的鼠标事件对象
+   * @returns {void}
+   */
   const handleNavigation = useCallback((href: string, e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -63,6 +81,10 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
   }, [router]);
   
   // 获取所有备考规划
+  /**
+   * @description 获取当前登录用户的所有备考规划并按创建时间降序排序。
+   * @returns {Promise<void>}
+   */
   const fetchStudyPlans = useCallback(async () => {
     if (!isAuthenticated || !user) return;
     
@@ -82,17 +104,20 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, setLoading, setStudyPlans]);
   
-  // 删除备考规划
-  const handleDeletePlan = async (planId: number) => {
+  /**
+   * @description 删除备考规划
+   * @param {number} planId - 要删除的规划ID
+   * @returns {Promise<void>}
+   */
+  const handleDeletePlan = useCallback(async (planId: number) => {
     try {
       setDeletingPlanId(planId);
       const success = await deleteStudyPlan(planId);
       
       if (success) {
         toast.success('备考规划已删除');
-        // 重新获取列表
         fetchStudyPlans();
       } else {
         toast.error('删除备考规划失败');
@@ -103,7 +128,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
     } finally {
       setDeletingPlanId(null);
     }
-  };
+  }, [fetchStudyPlans, setDeletingPlanId]);
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -115,7 +140,12 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
   }, [isAuthenticated, router, user, fetchStudyPlans]);
   
   // 计算距离考试的天数
-  const getDaysRemaining = (endDate: Date) => {
+  /**
+   * @description 计算指定日期距离今天还剩多少天。
+   * @param {Date | string} endDate - 截止日期。
+   * @returns {number} - 剩余天数，如果已过则为0。
+   */
+  const getDaysRemaining = (endDate: Date | string) => {
     const now = new Date();
     const end = new Date(endDate);
     const diffTime = end.getTime() - now.getTime();
@@ -124,18 +154,34 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
   };
   
   // 获取考试年份显示文本
-  const getExamYearDisplay = (studyPlan: StudyPlan) => {
+  /**
+   * @description 根据学习规划数据生成考试年份的显示文本。
+   * @param {StudyPlan} studyPlan - 学习规划对象。
+   * @returns {string} - 例如 "2026年考试"，如果无年份则为空字符串。
+   */
+  const getExamYearDisplay = (studyPlan: StudyPlan): string => {
     return studyPlan.examYear ? `${studyPlan.examYear}年考试` : '';
   };
   
   // 获取规划的第一个阶段ID，用于"开始学习"按钮
-  const getFirstPhaseId = (_studyPlan: StudyPlan) => {
+  /**
+   * @description 获取学习规划的第一个阶段ID (当前硬编码为1)。
+   * @param {StudyPlan} _studyPlan - 学习规划对象 (当前未使用)。
+   * @returns {number} - 第一个阶段的ID。
+   * @todo 需要根据实际数据结构或逻辑获取真实的第一个阶段ID。
+   */
+  const getFirstPhaseId = (_studyPlan: StudyPlan): number => {
     // 这里假设计划的第一个阶段ID是1，如果有更准确的方式获取可以修改
     return 1;
   };
 
   // 格式化创建时间
-  const formatCreationDate = (date: Date | string) => {
+  /**
+   * @description 将日期对象或日期字符串格式化为 "YYYY年M月D日" 的格式。
+   * @param {Date | string} date - 需要格式化的日期。
+   * @returns {string} - 格式化后的日期字符串。
+   */
+  const formatCreationDate = (date: Date | string): string => {
     const createDate = new Date(date);
     return `${createDate.getFullYear()}年${createDate.getMonth() + 1}月${createDate.getDate()}日`;
   };
@@ -428,6 +474,11 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
   );
 }
 
+/**
+ * @component StudyPlansPage
+ * @description 学习规划列表页面组件，使用Suspense进行代码分割和加载状态处理。
+ * @returns {JSX.Element}
+ */
 export default function StudyPlansPage() {
   return (
     <Suspense fallback={

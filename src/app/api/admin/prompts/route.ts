@@ -26,7 +26,7 @@ interface FileItem {
 /**
  * @description 获取所有提示词和响应文件
  */
-async function handler(request: NextRequest) {
+async function handler(_request: NextRequest) {
   try {
     // 确保目录存在
     await fs.mkdir(TIPS_DIR, { recursive: true });
@@ -83,13 +83,13 @@ async function handler(request: NextRequest) {
  */
 export const GET = withAdminAuth(handler);
 
-/**
- * 根据文件名确定文件类型
- */
-function getFileType(filename: string): string {
-  if (filename.startsWith('prompt_')) return 'prompt';
-  if (filename.startsWith('response_')) return 'response';
-  if (filename.startsWith('error_')) return 'error';
-  if (filename.startsWith('local_plan_')) return 'local_plan';
-  return 'other';
-} 
+// /**
+//  * 根据文件名确定文件类型
+//  */
+// function getFileType(filename: string): string {
+//   if (filename.startsWith('prompt_')) return 'prompt';
+//   if (filename.startsWith('response_')) return 'response';
+//   if (filename.startsWith('error_')) return 'error';
+//   if (filename.startsWith('local_plan_')) return 'local_plan';
+//   return 'other';
+// } 

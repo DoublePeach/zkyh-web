@@ -177,7 +177,7 @@ export default function EditKnowledgePointClient({ id }: EditKnowledgePointClien
     }
 
     loadData();
-  }, [id, router, form.reset, form]); // Add form dependency
+  }, [id, router, form]); // Reverted to form
 
   // Based on selected discipline, fetch chapters
   const watchDisciplineId = form.watch("disciplineId");
@@ -236,7 +236,7 @@ export default function EditKnowledgePointClient({ id }: EditKnowledgePointClien
     loadChapters();
     return () => { isMounted = false; };
 
-  }, [watchDisciplineId, form]); // Depend on watched value and form
+  }, [watchDisciplineId, form]); // Reverted to form
 
   // 将JSON对象格式化为字符串 (Specify return type and handle non-string values better in map)
   function formatTags(tags: Record<string, unknown>): string {

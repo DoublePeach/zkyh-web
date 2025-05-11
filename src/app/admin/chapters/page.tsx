@@ -36,9 +36,6 @@ export default function ChaptersPage() {
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
-  
-  // 调试计数器，强制刷新渲染
-  const [renderCount, setRenderCount] = useState(0);
 
   // 计算总页数和当前页显示的章节
   const totalPages = useMemo(() => {
@@ -48,7 +45,7 @@ export default function ChaptersPage() {
   const currentPageItems = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return chapters.slice(startIndex, startIndex + itemsPerPage);
-  }, [chapters, currentPage, itemsPerPage, renderCount]); // 添加renderCount作为依赖项
+  }, [chapters, currentPage, itemsPerPage]);
 
   // 加载所有护理学科
   useEffect(() => {
@@ -87,9 +84,6 @@ export default function ChaptersPage() {
         if (currentPage > newTotalPages && newTotalPages > 0) {
           setCurrentPage(1);
         }
-        
-        // 强制重新渲染
-        setRenderCount(prev => prev + 1);
       } else {
         toast.error("获取章节数据失败: " + (response.error || "未知错误"));
         setChapters([]);
@@ -190,11 +184,6 @@ export default function ChaptersPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      {/* 调试信息 */}
-      <div className="text-xs text-gray-500 mb-2">
-        总数据: {chapters.length} | 总页数: {totalPages} | 当前页: {currentPage} | 渲染次数: {renderCount}
       </div>
 
       <div className="rounded-md border">

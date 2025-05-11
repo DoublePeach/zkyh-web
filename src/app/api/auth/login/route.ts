@@ -1,3 +1,8 @@
+/**
+ * @description API route for user and admin login.
+ * @author 郝桃桃
+ * @date 2024-07-15
+ */
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
@@ -5,6 +10,7 @@ import { users, adminUsers } from '@/db/schema';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { eq } from 'drizzle-orm';
+import jwt from 'jsonwebtoken';
 
 // 验证schema
 const loginSchema = z.object({
@@ -12,11 +18,21 @@ const loginSchema = z.object({
   password: z.string().min(1, '请输入密码'),
 });
 
-// 简单的密码哈希函数 (与注册时使用的相同)
+/**
+ * @description Hashes a password using SHA256. 
+ * @param {string} password - The password to hash.
+ * @returns {string} - The hashed password.
+ * @warning This uses SHA256 without a salt, which is not recommended for production. Consider using bcrypt or Argon2.
+ */
 function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(password).digest('hex');
 }
 
+/**
+ * @description Handles user and admin login attempts.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Promise<NextResponse>} A JSON response indicating success or failure, along with user data or error messages.
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -47,8 +63,10 @@ export async function POST(req: Request) {
         );
       }
       
-      // 验证管理员密码 (实际项目中应该使用加密比较)
-      const passwordMatch = adminUser.password === password;
+      // Verify admin password. Assumes adminUser.password is a hash created by hashPassword.
+      // IMPORTANT: The admin password in the database MUST be stored as a hash.
+      // For production, a stronger hashing algorithm (e.g., bcrypt, Argon2) is highly recommended instead of SHA256 without salt.
+      const passwordMatch = adminUser.password === hashPassword(password);
       
       if (!passwordMatch) {
         return NextResponse.json(
@@ -110,8 +128,26 @@ export async function POST(req: Request) {
       );
     }
     
-    // 普通用户登录成功，返回用户信息（不包含密码）
-    return NextResponse.json({
+    // 为普通用户创建JWT
+    const tokenPayload = {
+      userId: user[0].id,
+      username: user[0].username,
+    };
+
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET 未配置，无法为普通用户生成token');
+      return NextResponse.json(
+        { success: false, error: '服务器内部错误，无法完成登录' },
+        { status: 500 }
+      );
+    }
+
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: '1d', // Token 有效期1天
+    });
+    
+    // 普通用户登录成功，创建响应并设置cookie
+    const response = NextResponse.json({
       success: true,
       message: '登录成功',
       isAdmin: false,
@@ -123,6 +159,16 @@ export async function POST(req: Request) {
         targetTitle: user[0].targetTitle,
       }
     });
+
+    response.cookies.set("session_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24, // 1天，单位秒
+    });
+
+    return response;
   } catch (error) {
     console.error('登录失败:', error);
     return NextResponse.json(

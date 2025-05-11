@@ -1,40 +1,83 @@
 /**
- * @description 护理助手APP用户集成 - 无缝登录接口
+ * @description 护理助手APP用户集成 - 无缝登录接口。允许通过护理助手APP的用户ID登录或自动注册到本系统。
  * @author 郝桃桃
- * @date 2024-09-28
+ * @date 2024-07-15
  */
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+// import { cookies } from 'next/headers'; // Removed unused import
 import { z } from 'zod';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken'; // 新增导入 for JWT
 
-// 根据环境选择真实或模拟的护理助手连接
-let nursingAssistantService;
-if (process.env.NODE_ENV === 'production') {
-  // 生产环境使用真实MySQL连接
-  nursingAssistantService = require('@/lib/mysql-connection');
-} else {
-  // 开发环境使用模拟数据
-  nursingAssistantService = require('@/lib/mock-mysql-connection');
+/**
+ * @interface NursingAssistantUserService
+ * @description 定义了与护理助手用户系统交互的服务所需的方法。
+ */
+interface NursingAssistantUserService {
+  /**
+   * @description 根据用户ID从护理助手系统获取用户信息。
+   * @param {string} userId - 护理助手系统的用户ID。
+   * @returns {Promise<any>} - 包含用户信息的对象，建议定义更具体的类型。
+   */
+  getNursingAssistantUser: (userId: string) => Promise<any>; 
+  /**
+   * @description 验证护理助手系统中的用户ID是否有效。
+   * @param {string} userId - 护理助手系统的用户ID。
+   * @returns {Promise<boolean>} - 如果用户有效则返回true，否则返回false。
+   */
+  validateNursingAssistantUser: (userId: string) => Promise<boolean>;
 }
 
-const { validateNursingAssistantUser, getNursingAssistantUser } = nursingAssistantService;
+// 根据环境选择真实或模拟的护理助手连接
+let nursingAssistantServiceModule: NursingAssistantUserService | undefined;
+
+/**
+ * @description 动态加载护理助手用户服务模块。
+ *              在生产环境加载真实的MySQL连接服务，在其他环境加载模拟服务。
+ * @returns {Promise<NursingAssistantUserService>} NursingAssistantUserService的实例。
+ * @throws {Error} 如果服务模块加载失败。
+ */
+async function loadNursingAssistantService(): Promise<NursingAssistantUserService> {
+  if (nursingAssistantServiceModule) {
+    return nursingAssistantServiceModule;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    // 生产环境使用真实MySQL连接
+    nursingAssistantServiceModule = await import('@/lib/mysql-connection');
+  } else {
+    // 开发环境使用模拟数据
+    nursingAssistantServiceModule = await import('@/lib/mock-mysql-connection');
+  }
+  if (!nursingAssistantServiceModule) {
+    console.error("Failed to load NursingAssistantUserService module dynamically."); // 添加日志
+    throw new Error("Failed to load NursingAssistantUserService");
+  }
+  return nursingAssistantServiceModule;
+}
 
 // 验证schema
 const nursingAssistantAuthSchema = z.object({
   userId: z.string().min(1, '请提供用户ID'),
-  timestamp: z.string().optional(),  // 可选时间戳用于验证请求有效性
-  signature: z.string().optional(),  // 可选签名用于验证请求有效性
+  // 重要：以下字段当前未用于请求签名验证，建议在生产环境中实现并强制使用签名以增强安全性。
+  timestamp: z.string().optional(),
+  signature: z.string().optional(), 
 });
 
 /**
- * @description 处理来自护理助手APP的登录请求
+ * @description 处理来自护理助手APP的登录请求。
+ *              通过护理助手用户ID验证用户，如果用户在本系统已存在则登录，否则自动注册新用户。
+ * @param {Request} req - HTTP请求对象，包含护理助手用户ID等信息。
+ * @returns {Promise<NextResponse>} JSON响应，包含登录结果和用户信息，或错误信息。
+ * @todo 强烈建议实现并强制使用请求体中的timestamp和signature字段进行签名验证，以防请求伪造。
  */
 export async function POST(req: Request) {
   try {
+    const nursingAssistantService = await loadNursingAssistantService();
+    const { validateNursingAssistantUser, getNursingAssistantUser } = nursingAssistantService;
+
     const body = await req.json();
     
     // 验证请求数据
@@ -114,6 +157,22 @@ export async function POST(req: Request) {
       };
     }
     
+    // 为用户创建JWT (统一会话管理)
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET 未配置，无法为护理助手用户生成token');
+      return NextResponse.json(
+        { success: false, error: '服务器内部错误，无法完成登录' },
+        { status: 500 }
+      );
+    }
+    const tokenPayload = {
+      userId: userData.id,
+      username: userData.username,
+    };
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, {
+      expiresIn: '7d', // Token 有效期7天 (与原maxAge一致)
+    });
+
     // 设置登录会话cookie
     const response = NextResponse.json({
       success: true,
@@ -121,8 +180,8 @@ export async function POST(req: Request) {
       user: userData
     });
     
-    // 在响应中设置cookie
-    response.cookies.set("session", String(userData.id), {
+    // 在响应中设置cookie (统一cookie名称和内容)
+    response.cookies.set("session_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

@@ -8,11 +8,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Progress } from '@/components/ui/progress';
+import { Brain } from 'lucide-react';
 import { usePlanGenerationStore } from '@/store/use-plan-generation-store';
-import { Brain, Loader2 } from 'lucide-react';
 
 export default function PlanGenerationStatus() {
-  const { status, progress, startTime } = usePlanGenerationStore();
+  const { status, progress } = usePlanGenerationStore();
   const [visible, setVisible] = useState(false);
   
   // 只在生成状态时显示

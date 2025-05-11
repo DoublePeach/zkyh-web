@@ -5,7 +5,7 @@
  */
 
 import { db } from '@/db';
-import { feedbacks, feedbackSourceEnum, feedbackStatusEnum } from '@/db/schema/feedbacks';
+import { feedbacks } from "@/db/schema/feedbacks";
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 export interface FeedbackInput {

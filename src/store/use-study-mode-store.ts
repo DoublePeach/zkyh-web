@@ -48,7 +48,7 @@ interface StudyModeState {
 
 export const useStudyModeStore = create<StudyModeState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       currentMode: 'normal', // 默认模式
       isLoading: false,
       

@@ -11,8 +11,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Book, BookOpen, Clock, CheckCircle, Lightbulb, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
@@ -122,7 +120,6 @@ export default function DailyLearningPage() {
       try {
         // 获取参数
         const planId = String(params?.id);
-        const phaseId = String(params?.phaseId);
         const day = String(params?.day);
         
         if (!planId || !day) {

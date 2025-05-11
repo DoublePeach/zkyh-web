@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import Link from 'next/link';
 import { CalendarDays, BookOpen, Star, CheckCircle2, Loader2 } from 'lucide-react';
 import { SurveyFormData } from '@/types/survey';
 
@@ -347,7 +346,7 @@ export default function DynamicStudyPlanPage() {
         
         {!loading && !studyPlan && dbStatus.connected && (
           <div className="text-center py-20 text-gray-500">
-            <p className="mb-4">点击"生成备考规划"按钮，根据数据库中的实际学习资料生成个性化备考计划。</p>
+            <p className="mb-4">点击&quot;生成备考规划&quot;按钮，根据数据库中的实际学习资料生成个性化备考计划。</p>
             <p className="text-sm">备考规划将基于以下信息生成：</p>
             <ul className="text-sm list-disc inline-block text-left mt-2">
               <li>学习者类型：{defaultFormData.titleLevel === 'junior' ? '初级护师' : '主管护师'}</li>

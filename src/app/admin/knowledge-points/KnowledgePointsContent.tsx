@@ -63,9 +63,6 @@ export default function KnowledgePointsContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   
-  // 调试/强制刷新
-  const [renderCounter, setRenderCounter] = useState(0);
-  
   // 计算总页数和当前页数据
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(knowledgePoints.length / itemsPerPage));
@@ -74,7 +71,7 @@ export default function KnowledgePointsContent() {
   const currentPageItems = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return knowledgePoints.slice(startIndex, startIndex + itemsPerPage);
-  }, [knowledgePoints, currentPage, itemsPerPage, renderCounter]);
+  }, [knowledgePoints, currentPage, itemsPerPage]);
 
   // 加载筛选条件（学科和科目）
   useEffect(() => {
@@ -196,9 +193,6 @@ export default function KnowledgePointsContent() {
         if (currentPage > newTotalPages && newTotalPages > 0) {
           setCurrentPage(1);
         }
-        
-        // 强制刷新
-        setRenderCounter(prev => prev + 1);
       } else {
         toast.error("获取知识点失败");
         setKnowledgePoints([]);
@@ -405,7 +399,7 @@ export default function KnowledgePointsContent() {
 
       <div className="flex justify-between items-center">
         <div className="text-xs text-gray-500">
-          总数据: {knowledgePoints.length} | 总页数: {totalPages} | 当前页: {currentPage} | 渲染次数: {renderCounter}
+          总数据: {knowledgePoints.length} | 总页数: {totalPages} | 当前页: {currentPage}
         </div>
         <Button 
           variant="outline" 

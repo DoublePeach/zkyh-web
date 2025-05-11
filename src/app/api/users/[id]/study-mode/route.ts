@@ -4,7 +4,7 @@
  * @date 2024-05-10
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { db } from '@/db';
 import { users, type StudyMode } from '@/db/schema/users';
 import { eq } from 'drizzle-orm';

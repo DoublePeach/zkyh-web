@@ -121,7 +121,7 @@ export default function EditChapterClient({ id }: EditChapterClientProps) {
     }
 
     loadData();
-  }, [id, router, form.reset, form]);
+  }, [id, router, form]);
 
   async function onSubmit(data: FormData) {
     setIsSubmitting(true);

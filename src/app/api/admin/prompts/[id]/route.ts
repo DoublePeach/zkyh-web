@@ -9,9 +9,6 @@ import path from 'path';
 import fs from 'fs';
 import { withAdminAuth } from '@/lib/auth/admin-auth';
 
-// 提示词文件保存目录
-const TIPS_DIR = path.resolve(process.cwd(), 'preparation-plan-tips');
-
 // 获取提示词文件
 export const GET = withAdminAuth(async (
   req: NextRequest, 

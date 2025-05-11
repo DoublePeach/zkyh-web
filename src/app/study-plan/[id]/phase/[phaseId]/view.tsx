@@ -15,9 +15,8 @@ import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Book, Clock, BookOpen, ArrowLeft, CheckCircle, PlayCircle, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -189,8 +188,6 @@ function PhaseDetailViewContent({
   const { isAuthenticated } = useAuthStore();
   
   const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<Plan>({} as Plan);
-  const [phases, setPhases] = useState<Phase[]>([]);
   const [rawDailyPlans, setRawDailyPlans] = useState<DailyPlan[]>([]); // Renamed to avoid confusion
   const [currentPhase, setCurrentPhase] = useState<Phase | null>(null);
   
@@ -217,7 +214,6 @@ function PhaseDetailViewContent({
         console.error("Tasks missing dateObj for weekly grouping.");
         return [];
     }
-    let currentProvisionalWeekStartDate: Date | null = null;
     let weekNumber = 0;
 
     phaseSpecificTasks.forEach(task => { // task should have dateObj
@@ -284,8 +280,6 @@ function PhaseDetailViewContent({
         cachePlanData(planId, effectiveData);
       }
 
-      setPlan(effectiveData.plan);
-      setPhases(effectiveData.phases);
       setRawDailyPlans(effectiveData.dailyPlans); 
 
       const phaseIdNum = parseInt(phaseIdString, 10);
@@ -304,14 +298,6 @@ function PhaseDetailViewContent({
     setTimeout(() => {
       router.push(`/study-plan/${planId}`);
     }, 10);
-  };
-
-  const startLearningTask = (task: Task): void => {
-    if (task.resources && task.resources.length > 0) {
-      toast.info(`学习资源: ${task.resources[0]}`);
-    } else {
-      toast.success(`开始学习: ${task.title}`);
-    }
   };
 
   // EFFECT HOOKS

@@ -11,17 +11,21 @@ import Link from 'next/link';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { usePlanGenerationStore } from '@/store/use-plan-generation-store';
-import { ArrowLeft, BookOpen, Brain, Calendar, CheckCircle, Clock, Loader2, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, BookOpen, Brain, Calendar, CheckCircle, Clock, RefreshCcw } from 'lucide-react';
 import { createTaskPoller } from './poller';
-import { toast } from 'sonner';
 
+/**
+ * @component GeneratingPage
+ * @description 显示备考规划生成进度的页面。它从localStorage获取任务ID，
+ *              轮询后端以更新生成状态和进度，并向用户展示动态的反馈信息。
+ *              处理成功、失败和进行中的各种状态。
+ * @returns {JSX.Element}
+ */
 export default function GeneratingPage() {
   const router = useRouter();
   const { 
     status, 
     progress, 
-    startTime, 
-    estimatedTimeMs,
     planId,
     error
   } = usePlanGenerationStore();
@@ -40,9 +44,14 @@ export default function GeneratingPage() {
   // 如果不是在生成状态，跳转到适当的页面
   useEffect(() => {
     if (status === 'idle') {
+      localStorage.removeItem('current_task_id');
       router.push('/survey');
     } else if (status === 'success' && planId) {
+      localStorage.removeItem('current_task_id');
       router.push(`/study-plan/${planId}`);
+    } else if (status === 'error') {
+      localStorage.removeItem('current_task_id');
+      // No automatic redirect for error, user can retry or navigate away via UI
     }
   }, [status, planId, router]);
   
@@ -112,7 +121,11 @@ export default function GeneratingPage() {
     return () => clearInterval(interval);
   }, [status]);
   
-  // 重试生成
+  /**
+   * @description 处理生成失败后的重试操作，或在其他情况下刷新页面。
+   *              如果当前状态是错误状态，则导航到调研页面重新开始；否则，刷新当前页面。
+   * @returns {void}
+   */
   const handleRetry = () => {
     if (status === 'error') {
       router.push('/survey');

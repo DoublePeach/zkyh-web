@@ -6,10 +6,10 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
+import { type VariantProps as CvaVariantProps } from "class-variance-authority"
 
+import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
 
 const Pagination = ({
   className,
@@ -46,8 +46,8 @@ PaginationItem.displayName = "PaginationItem"
 
 type PaginationLinkProps = {
   isActive?: boolean
-  size?: "default" | "sm" | "lg" | "icon"
-} & React.ComponentProps<typeof Link>
+  size?: CvaVariantProps<typeof buttonVariants>['size']
+} & Omit<React.ComponentProps<"a">, "size">
 
 const PaginationLink = ({
   className,
@@ -55,19 +55,13 @@ const PaginationLink = ({
   size = "icon",
   ...props
 }: PaginationLinkProps) => (
-  <Link
+  <a
     aria-current={isActive ? "page" : undefined}
     className={cn(
-      isActive
-        ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-        : "bg-background hover:bg-muted hover:text-accent-foreground border border-input",
-      "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-      {
-        "h-10 px-4 py-2": size === "default",
-        "h-9 rounded-md px-3": size === "sm",
-        "h-11 rounded-md px-8": size === "lg",
-        "h-10 w-10": size === "icon",
-      },
+      buttonVariants({
+        variant: isActive ? "outline" : "ghost",
+        size,
+      }),
       className
     )}
     {...props}

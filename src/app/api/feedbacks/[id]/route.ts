@@ -4,7 +4,7 @@
  * @date 2024-05-10
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getFeedbackById, updateFeedbackStatus } from '@/lib/services/feedback-service';
 
 /**

@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { knowledgePoints, examSubjects, chapters } from '@/db/schema';
-import { eq, and, inArray, or, like, ilike } from 'drizzle-orm';
+import { eq, inArray, or, ilike } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     // 默认优先查找专业实践能力相关的知识点
     const priorityKeywords = ['专业实践能力', '实践能力', '基础护理', '护理基础', '护理学'];
     
-    let whereConditions = [];
+    const whereConditions = [];
     
     // 1. 先尝试通过科目名称精确匹配
     if (subjects.length > 0) {

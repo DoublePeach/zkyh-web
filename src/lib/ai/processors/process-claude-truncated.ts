@@ -34,7 +34,7 @@ function extractBaseStructure(truncatedJson: string): any {
     // 1. 尝试直接解析（可能会失败）
     try {
       return JSON.parse(truncatedJson);
-    } catch (error) {
+    } catch /* (_error) */ {
       console.log('直接解析失败，尝试提取有效部分');
     }
     
@@ -62,7 +62,7 @@ function extractBaseStructure(truncatedJson: string): any {
           if (Array.isArray(phases)) {
             structure.phases = phases;
           }
-        } catch (error) {
+        } catch /* (_error) */ {
           console.log('解析phases数组失败，尝试提取单个phase');
           // 尝试提取单个phase对象
           const phaseObjects = extractObjectsFromArray(phasesMatch[1]);
@@ -71,8 +71,8 @@ function extractBaseStructure(truncatedJson: string): any {
           }
         }
       }
-    } catch (error) {
-      console.log('提取phases失败:', error);
+    } catch (_error) {
+      console.log('提取phases失败:', _error);
     }
     
     // 5. 尝试提取dailyPlans数组
@@ -86,7 +86,7 @@ function extractBaseStructure(truncatedJson: string): any {
           if (Array.isArray(dailyPlans)) {
             structure.dailyPlans = dailyPlans;
           }
-        } catch (error) {
+        } catch /* (_error) */ {
           console.log('解析dailyPlans数组失败，尝试提取单个plan');
           // 尝试提取单个dailyPlan对象
           const dailyPlanObjects = extractObjectsFromArray(dailyPlansMatch[1]);
@@ -95,13 +95,13 @@ function extractBaseStructure(truncatedJson: string): any {
           }
         }
       }
-    } catch (error) {
-      console.log('提取dailyPlans失败:', error);
+    } catch (_error) {
+      console.log('提取dailyPlans失败:', _error);
     }
     
     return structure;
-  } catch (error) {
-    console.error('处理截断JSON失败:', error);
+  } catch (_error) {
+    console.error('处理截断JSON失败:', _error);
     return {
       overview: '无法解析学习计划数据，请重试',
       phases: [],
@@ -162,7 +162,7 @@ function extractObjectsFromArray(arrayText: string): any[] {
           const objText = arrayText.substring(startPos, i + 1);
           const obj = JSON.parse(objText);
           objects.push(obj);
-        } catch (error) {
+        } catch /* (_error) */ {
           // 忽略无法解析的对象
         }
         startPos = -1;
@@ -218,13 +218,12 @@ function ensurePhases(structure: any): void {
 /**
  * @description 生成缺失的每日计划
  * @param {any} structure - 学习计划结构
- * @param {number} knowledgePointsCount - 知识点总数
+ * @param {number} _knowledgePointsCount - 知识点总数
  * @param {number} requiredDays - 需要生成的天数
  */
-function generateMissingDailyPlans(structure: any, knowledgePointsCount: number, requiredDays: number): void {
+function generateMissingDailyPlans(structure: any, _knowledgePointsCount: number, requiredDays: number): void {
   // 如果结构中没有dailyPlans或长度不够，生成缺失的日计划
   const currentPlans = structure.dailyPlans || [];
-  const pointsPerDay = Math.ceil(knowledgePointsCount / requiredDays);
   
   for (let day = currentPlans.length + 1; day <= requiredDays; day++) {
     // 确定当前日期所属阶段

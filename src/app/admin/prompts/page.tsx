@@ -7,7 +7,6 @@
 'use client';
 
 import { useState, useEffect, Fragment } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -89,8 +88,6 @@ interface FileItem {
 }
 
 export default function PromptsManagementPage() {
-  const router = useRouter();
-  
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
