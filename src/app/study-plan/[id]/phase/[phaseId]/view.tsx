@@ -11,7 +11,7 @@
  * - 点击无计划的日期会提示用户休息
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -156,9 +156,36 @@ function SubjectBadge({ subject }: { subject: string }) {
   );
 }
 
-export default function PhaseDetailView() {
+// 带Suspense的路由参数组件
+function RouteParamsProvider({ 
+  children 
+}: { 
+  children: (params: { id?: string, phaseId?: string }) => React.ReactNode 
+}) {
   const params = useParams();
+  return <>{children({ id: params?.id as string, phaseId: params?.phaseId as string })}</>;
+}
+
+// 带Suspense的路由导航组件
+function RouterProvider({
+  children
+}: {
+  children: (router: ReturnType<typeof useRouter>) => React.ReactNode
+}) {
   const router = useRouter();
+  return <>{children(router)}</>;
+}
+
+// 主组件
+function PhaseDetailViewContent({ 
+  planId, 
+  phaseIdString,
+  router
+}: { 
+  planId: string, 
+  phaseIdString: string,
+  router: ReturnType<typeof useRouter>
+}) {
   const { isAuthenticated } = useAuthStore();
   
   const [loading, setLoading] = useState(true);
@@ -274,7 +301,9 @@ export default function PhaseDetailView() {
   };
   
   const goBackToStudyPlan = () => {
-    router.push(`/study-plan/${params?.id}`);
+    setTimeout(() => {
+      router.push(`/study-plan/${planId}`);
+    }, 10);
   };
 
   const startLearningTask = (task: Task): void => {
@@ -291,10 +320,10 @@ export default function PhaseDetailView() {
       router.push('/login');
       return;
     }
-    if (params?.id && params?.phaseId) {
-      fetchPlanData(String(params.id), String(params.phaseId));
+    if (planId && phaseIdString) {
+      fetchPlanData(planId, phaseIdString);
     }
-  }, [params?.id, params?.phaseId, isAuthenticated, router]); // Removed fetchPlanData from deps
+  }, [planId, phaseIdString, isAuthenticated, router]); // Removed fetchPlanData from deps
 
   useEffect(() => {
     if (currentPhase) {
@@ -356,8 +385,11 @@ export default function PhaseDetailView() {
 
   const handleDayClick = (dayInfo: DayDisplayInfo) => {
     if (dayInfo.plan) {
-      // 导航到日学习页面
-      router.push(`/study-plan/${params?.id}/phase/${params?.phaseId}/day/${dayInfo.plan.day}`);
+      setTimeout(() => {
+        if (dayInfo.plan) {
+          router.push(`/study-plan/${planId}/phase/${phaseIdString}/day/${dayInfo.plan.day}`);
+        }
+      }, 10);
     } else {
       setNoPlanModalDate(formatShortDate(dayInfo.date));
       setShowNoPlanModal(true);
@@ -530,5 +562,33 @@ export default function PhaseDetailView() {
          </AlertDialog>
       )}
     </div>
+  );
+}
+
+// 导出主要组件
+export default function PhaseDetailView() {
+  return (
+    <Suspense fallback={
+      <div className="container flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary border-t-transparent animate-spin rounded-full"></div>
+          <p className="text-lg">正在加载页面...</p>
+        </div>
+      </div>
+    }>
+      <RouterProvider>
+        {(router) => (
+          <RouteParamsProvider>
+            {(params) => (
+              <PhaseDetailViewContent 
+                planId={params.id || ''} 
+                phaseIdString={params.phaseId || ''}
+                router={router}
+              />
+            )}
+          </RouteParamsProvider>
+        )}
+      </RouterProvider>
+    </Suspense>
   );
 } 

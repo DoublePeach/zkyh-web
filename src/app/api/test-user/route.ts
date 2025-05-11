@@ -14,10 +14,10 @@ export async function POST(request: NextRequest) {
     // 仅在测试环境中启用
     const isProduction = process.env.NODE_ENV === 'production';
     if (isProduction) {
-      return NextResponse.json(
-        { error: '此端点仅在测试环境中可用' },
-        { status: 403 }
-      );
+      return new Response(JSON.stringify({ error: '此端点仅在测试环境中可用' }), { 
+      status: 403,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
     
     // 解析请求参数

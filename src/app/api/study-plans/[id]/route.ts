@@ -30,10 +30,10 @@ export async function GET(
     
     if (!planId) {
       console.error('缺少规划ID参数');
-      return NextResponse.json(
-        { error: '缺少规划ID' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: '缺少规划ID' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
     
     const result = await getStudyPlanDetails(planId);

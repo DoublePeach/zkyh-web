@@ -83,19 +83,19 @@ export async function GET(request: NextRequest) {
     const taskId = request.nextUrl.searchParams.get('taskId');
     
     if (!taskId) {
-      return NextResponse.json(
-        { error: '缺少任务ID' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: '缺少任务ID' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
     
     const task = getTask(taskId);
     
     if (!task) {
-      return NextResponse.json(
-        { error: '任务不存在' },
-        { status: 404 }
-      );
+      return new Response(JSON.stringify({ error: '任务不存在' }), { 
+      status: 404,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
     
     return NextResponse.json({
@@ -111,10 +111,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('获取生成状态错误:', error);
-    return NextResponse.json(
-      { error: '获取生成状态失败' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: '获取生成状态失败' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
@@ -136,10 +136,10 @@ export async function POST(request: NextRequest) {
     
     if (!userId || !formData) {
       console.error('缺少必要参数');
-      return NextResponse.json(
-        { error: '缺少必要参数' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: '缺少必要参数' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
     
     // 验证用户是否存在

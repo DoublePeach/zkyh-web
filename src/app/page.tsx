@@ -9,14 +9,16 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/use-auth-store';
+import { useStudyModeStore, studyModeConfig } from '@/store/use-study-mode-store';
 import { BookOpen, BarChart, /* Trophy, */ Clock, ChevronRight, ArrowRight, Sparkles, BookMarked, Calendar, GraduationCap, Award, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import { getUserStudyPlans } from '@/lib/db-client';
 import type { studyPlans } from '@/db/schema'; 
 import type { InferSelectModel } from 'drizzle-orm'; 
 import { LoginModal } from '@/components/forms/login-modal';
+import { useRouter } from 'next/navigation';
 
 type StudyPlan = InferSelectModel<typeof studyPlans>;
 
@@ -48,13 +50,48 @@ const extractTargetTitle = (title: string | undefined | null): string => {
   return title.slice(0, 8);
 };
 
+// 带Suspense的路由提供器
+function RouterProvider({ children }: { children: (router: ReturnType<typeof useRouter>) => React.ReactNode }) {
+  const router = useRouter();
+  return <>{children(router)}</>;
+}
+
 export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-pink-400 border-t-transparent rounded-full animate-spin mr-2"></div>
+        <p>加载中...</p>
+      </div>
+    }>
+      <RouterProvider>
+        {(router) => <HomePageContent router={router} />}
+      </RouterProvider>
+    </Suspense>
+  );
+}
+
+function HomePageContent({ router }: { router: ReturnType<typeof useRouter> }) {
   const { isAuthenticated, user } = useAuthStore();
+  const { currentMode, loadUserMode } = useStudyModeStore();
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAutoLogin, setShowAutoLogin] = useState(true);
+
+  // 路由导航函数，通过router.push进行跳转，避免Link组件问题
+  const handleNavigation = useCallback((href: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // 使用setTimeout确保在React渲染周期之外执行导航，避免状态更新干扰
+    setTimeout(() => {
+      router.push(href);
+    }, 10);
+  }, [router]);
   
-  // 获取用户的备考规划
+  // 获取用户的备考规划和学习模式
   useEffect(() => {
     const fetchStudyPlans = async () => {
       if (!isAuthenticated || !user) return;
@@ -63,6 +100,9 @@ export default function HomePage() {
         setLoading(true);
         const plans = await getUserStudyPlans(user.id);
         setStudyPlans(plans);
+        
+        // 加载用户学习模式
+        await loadUserMode(user.id);
       } catch (error) {
         console.error('获取备考规划失败：', error);
       } finally {
@@ -76,7 +116,7 @@ export default function HomePage() {
     if (isAuthenticated) {
       setShowAutoLogin(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, loadUserMode]);
   
   // 备考概况数据
   const studyData = {
@@ -95,27 +135,33 @@ export default function HomePage() {
         {/* 顶部内容 - 根据用户是否有备考规划显示不同内容 */}
         {loading ? (
           <div className="bg-white rounded-xl p-6 mb-6 shadow-md flex justify-center items-center">
-            <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+            <div className="w-6 h-6 border-2 border-pink-400 border-t-transparent rounded-full animate-spin mr-2"></div>
             <p>加载中...</p>
           </div>
         ) : (
           <>
             {/* 如果用户没有备考规划，显示开启旅程横幅 */}
             {(!isAuthenticated || studyPlans.length === 0) && (
-              <div className="bg-indigo-600 text-white rounded-xl p-6 mb-6 shadow-md">
-                <h1 className="text-2xl font-bold mb-2">开启您的职称晋升之旅</h1>
-                <p className="text-indigo-100 mb-6">为卫生专业技术人员提供个性化备考规划</p>
+              <div className="bg-[#FFEEEE] text-pink-800 rounded-xl p-6 mb-6 shadow-md">
+                <h1 className="text-2xl font-bold mb-2">开启您的职称通关之旅</h1>
+                <p className="text-pink-700 mb-2">当前版本仅包含初级护师的备考功能, 欢迎您的首次体验!</p>
+                <p className="text-pink-700 mb-4">我们会根据您的学习时间安排合理分配任务</p>
+                <p className="text-xs text-pink-600 mb-2">您的真实感受和宝贵建议对我们的产品研发团队至关重要~</p>
+                <p className="text-xs text-pink-600 mb-6">主管护师/副主任护师/主任护师... 的职称晋升规划功能正在紧锣密鼓的开发中, 敬请期待.</p>
                 <div className="flex flex-wrap gap-4">
-                  <Link href="/survey">
-                    <Button className="bg-white text-indigo-600 hover:bg-indigo-50">
-                      立即开始备考规划
-                    </Button>
-                  </Link>
-                  <Link href="/study-plans">
-                    <Button variant="outline" className="bg-transparent border-white text-white hover:bg-indigo-500">
-                      查看我的规划
-                    </Button>
-                  </Link>
+                  <Button
+                    className="bg-pink-600 text-white hover:bg-pink-700"
+                    onClick={(e) => handleNavigation('/survey', e)}
+                  >
+                    立即开始备考规划
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="bg-transparent border-pink-600 text-pink-600 hover:bg-pink-50"
+                    onClick={(e) => handleNavigation('/study-plans', e)}
+                  >
+                    查看我的规划
+                  </Button>
                 </div>
               </div>
             )}
@@ -127,26 +173,42 @@ export default function HomePage() {
                   {/* 卡片顶部标题栏 */}
                   <div className="p-5 border-b border-gray-100 flex justify-between items-center">
                     <h2 className="text-xl font-bold flex items-center">
-                      <Award className="h-5 w-5 text-indigo-500 mr-2" />
+                      <Award className="h-5 w-5 text-pink-500 mr-2" />
                       我的备考概况
                     </h2>
-                    <Link href="/study-plans" className="text-primary text-sm flex items-center hover:underline">
+                    <Button
+                      variant="link"
+                      className="text-pink-500 text-sm flex items-center p-0 hover:no-underline hover:text-pink-600"
+                      onClick={(e) => handleNavigation('/study-plans', e)}
+                    >
                       查看全部规划 <ArrowRight className="ml-1 h-4 w-4" />
-                    </Link>
+                    </Button>
                   </div>
                   
                   {/* 卡片主体内容 */}
                   <div className="p-5">
                     {/* 学习目标和进度摘要 */}
-                    <div className="flex items-center mb-5 bg-indigo-50 p-3 rounded-lg">
-                      <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                        <GraduationCap className="h-6 w-6 text-indigo-600" />
+                    <div className="flex items-center justify-between mb-5 bg-pink-50 p-3 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="bg-pink-100 p-2 rounded-full mr-3">
+                          <GraduationCap className="h-6 w-6 text-pink-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">当前备考目标</p>
+                          <p className="font-semibold text-lg text-gray-900">
+                            {extractTargetTitle(currentPlan?.title)}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500">当前备考目标</p>
-                        <p className="font-semibold text-lg text-gray-900">
-                          {extractTargetTitle(currentPlan?.title)}
-                        </p>
+                      
+                      {/* 学习模式显示 */}
+                      <div className="flex items-center">
+                        <div className={`flex items-center px-3 py-1 rounded-full border ${studyModeConfig[currentMode].color.replace('text-', 'border-')}`}>
+                          <span className="mr-1">{studyModeConfig[currentMode].icon}</span>
+                          <span className={`text-sm font-medium ${studyModeConfig[currentMode].color}`}>
+                            {studyModeConfig[currentMode].name}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     
@@ -174,12 +236,14 @@ export default function HomePage() {
                     </div>
                     
                     {/* 继续学习按钮 */}
-                    <Link href={currentPlan ? `/study-plan/${currentPlan.id}/phase/1` : "/study-plans"}>
-                      <Button className="w-full gap-2 py-5" size="lg">
-                        <BookOpen className="h-5 w-5" />
-                        继续学习
-                      </Button>
-                    </Link>
+                    <Button
+                      className="w-full gap-2 py-5 bg-pink-600 hover:bg-pink-700"
+                      size="lg"
+                      onClick={(e) => handleNavigation(currentPlan ? `/study-plan/${currentPlan.id}/phase/1` : "/study-plans", e)}
+                    >
+                      <BookOpen className="h-5 w-5" />
+                      继续学习
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -190,20 +254,20 @@ export default function HomePage() {
         {/* 核心功能 */}
         <h2 className="text-xl font-bold mb-4">核心功能</h2>
         <div className="grid grid-cols-2 gap-4 mb-8">
-          <Link href={isAuthenticated && studyPlans.length > 0 ? "/study-plans" : "/survey"}>
-            <Card className="bg-blue-50 border-none shadow-sm hover:shadow-md transition-shadow">
+          <div onClick={(e) => handleNavigation(isAuthenticated && studyPlans.length > 0 ? "/study-plans" : "/survey", e)}>
+            <Card className="bg-pink-50 border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-6 flex flex-col items-center text-center">
-                <div className="bg-blue-100 p-3 rounded-full mb-3">
-                  <BookMarked className="h-6 w-6 text-blue-600" />
+                <div className="bg-pink-100 p-3 rounded-full mb-3">
+                  <BookMarked className="h-6 w-6 text-pink-600" />
                 </div>
                 <h3 className="font-medium mb-1">个性化规划</h3>
                 <p className="text-sm text-gray-600">根据您的基础定制备考计划</p>
               </CardContent>
             </Card>
-          </Link>
+          </div>
           
-          <Link href="/learn">
-            <Card className="bg-purple-50 border-none shadow-sm hover:shadow-md transition-shadow">
+          <div onClick={(e) => handleNavigation("/learn", e)}>
+            <Card className="bg-purple-50 border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-6 flex flex-col items-center text-center">
                 <div className="bg-purple-100 p-3 rounded-full mb-3">
                   <Sparkles className="h-6 w-6 text-purple-600" />
@@ -212,7 +276,7 @@ export default function HomePage() {
                 <p className="text-sm text-gray-600">系统掌握专业知识点</p>
               </CardContent>
             </Card>
-          </Link>
+          </div>
         </div>
         
         {/* 最近活动 */}
@@ -221,9 +285,12 @@ export default function HomePage() {
           <Calendar className="h-12 w-12 text-gray-300 mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">暂无学习记录</h3>
           <p className="text-gray-500 mb-4">开始学习来记录您的备考进度</p>
-          <Link href={isAuthenticated && studyPlans.length > 0 ? "/study-plans" : "/survey"}>
-            <Button>开始学习</Button>
-          </Link>
+          <Button
+            className="bg-pink-600 hover:bg-pink-700"
+            onClick={(e) => handleNavigation(isAuthenticated && studyPlans.length > 0 ? "/study-plans" : "/survey", e)}
+          >
+            开始学习
+          </Button>
         </div>
       </div>
     </main>

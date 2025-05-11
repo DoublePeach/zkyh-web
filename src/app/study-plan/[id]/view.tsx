@@ -11,7 +11,7 @@
  * - 使用localStorage进行数据缓存，减少API请求
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,6 +74,26 @@ interface DailyPlan {
   reviewTips?: string;
 }
 
+// 带Suspense的路由参数组件
+function RouteParamsProvider({ 
+  children 
+}: { 
+  children: (params: { id?: string }) => React.ReactNode 
+}) {
+  const params = useParams();
+  return <>{children({ id: params?.id as string })}</>;
+}
+
+// 带Suspense的路由器组件
+function RouterProvider({
+  children
+}: {
+  children: (router: ReturnType<typeof useRouter>) => React.ReactNode
+}) {
+  const router = useRouter();
+  return <>{children(router)}</>;
+}
+
 /**
  * @description 从localStorage获取缓存的规划数据
  * @param {string} planId - 备考规划ID
@@ -126,9 +146,8 @@ function cachePlanData(planId: string, data: { plan: Plan; phases: Phase[]; dail
   }
 }
 
-export default function StudyPlanView() {
-  const params = useParams();
-  const router = useRouter();
+// 主视图组件
+function StudyPlanViewContent({ planId, router }: { planId: string, router: ReturnType<typeof useRouter> }) {
   const { isAuthenticated } = useAuthStore();
   
   const [loading, setLoading] = useState(true);
@@ -169,8 +188,8 @@ export default function StudyPlanView() {
       const cachedData = getCachedPlanData(planId);
       if (cachedData) {
         setPlan(cachedData.plan);
-        setPhases(cachedData.phases);
-        setDailyPlans(cachedData.dailyPlans);
+        setPhases(cachedData.phases || []);
+        setDailyPlans(cachedData.dailyPlans || []);
         setLoading(false);
         return;
       }
@@ -188,18 +207,23 @@ export default function StudyPlanView() {
         throw new Error(result.error || '获取备考规划失败');
       }
       
+      // 添加默认空数组，防止undefined
+      const phasesData = result.data.phases || [];
+      const dailyPlansData = result.data.dailyPlans || [];
+      
       // 为每个任务添加完成状态
-      const plansWithStatus = result.data.dailyPlans.map((day: DailyPlan) => ({
+      const plansWithStatus = dailyPlansData.map((day: DailyPlan) => ({
         ...day,
-        tasks: day.tasks?.map((task) => ({
+        tasks: (day.tasks || []).map((task) => ({
           ...task,
           isCompleted: false
-        })) || []
+        }))
       }));
       
       // 处理数据
       const data = {
         ...result.data,
+        phases: phasesData,
         dailyPlans: plansWithStatus
       };
       
@@ -207,7 +231,7 @@ export default function StudyPlanView() {
       cachePlanData(planId, data);
       
       setPlan(data.plan);
-      setPhases(data.phases);
+      setPhases(phasesData);
       setDailyPlans(plansWithStatus);
     } catch (error) {
       console.error('获取备考规划失败:', error);
@@ -223,20 +247,17 @@ export default function StudyPlanView() {
       return;
     }
     
-    if (params?.id) {
-      const planId = String(params.id);
+    if (planId) {
       fetchPlanData(planId);
     }
-  }, [params?.id, isAuthenticated, router]);
+  }, [planId, isAuthenticated, router]);
   
   // 处理删除规划
   const handleDeletePlan = async (): Promise<void> => {
-    if (!params?.id) return;
+    if (!planId) return;
     
     try {
       setDeleting(true);
-      // 确保params.id是字符串
-      const planId = typeof params.id === 'string' ? params.id : params.id[0];
       const success = await deleteStudyPlan(planId);
       
       if (success) {
@@ -255,7 +276,7 @@ export default function StudyPlanView() {
 
   // 跳转到阶段详情页面
   const goToPhaseDetail = (phaseId: number): void => {
-    router.push(`/study-plan/${params?.id}/phase/${phaseId}`);
+    router.push(`/study-plan/${planId}/phase/${phaseId}`);
   };
   
   // 切换展开/折叠状态
@@ -278,7 +299,7 @@ export default function StudyPlanView() {
     );
   }
   
-  if (!plan) {
+  if (!plan || !plan.id) {
     return (
       <div className="container flex flex-col items-center justify-center min-h-screen">
         <h1 className="text-2xl font-bold mb-4">备考规划不存在</h1>
@@ -304,6 +325,9 @@ export default function StudyPlanView() {
     
     return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   };
+  
+  // 确保数组存在
+  const safePhases = phases || [];
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -414,8 +438,8 @@ export default function StudyPlanView() {
           
           {expandedSection === 2 && (
             <div className="p-4 bg-white rounded-lg shadow-sm">
-              {plan.overview || plan.planData?.overview ? (
-                <p className="mb-4 whitespace-pre-line">{plan.overview || plan.planData?.overview}</p>
+              {plan.overview || (plan.planData && plan.planData.overview) ? (
+                <p className="mb-4 whitespace-pre-line">{plan.overview || (plan.planData && plan.planData.overview)}</p>
               ) : (
                 <>
                   <p className="mb-4">您的目标是在2026年4月通过初级护师职称考试，根据您选择的"通关模式"生成以下具体备考规划，请查收～</p>
@@ -444,7 +468,7 @@ export default function StudyPlanView() {
           </h2>
           
           <div className="space-y-4">
-            {phases.map((phase) => (
+            {safePhases.map((phase) => (
               <Card 
                 key={phase.id} 
                 className={`border-l-4 ${
@@ -485,7 +509,7 @@ export default function StudyPlanView() {
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-2">学习重点</h4>
                           <ul className="text-sm space-y-1">
-                            {phase.focusAreas.map((area: string, i: number) => (
+                            {(phase.focusAreas || []).map((area: string, i: number) => (
                               <li key={i} className="flex items-start">
                                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
                                 {area}
@@ -497,7 +521,7 @@ export default function StudyPlanView() {
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-2">学习目标</h4>
                           <ul className="text-sm space-y-1">
-                            {phase.learningGoals.map((goal: string, i: number) => (
+                            {(phase.learningGoals || []).map((goal: string, i: number) => (
                               <li key={i} className="flex items-start">
                                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
                                 {goal}
@@ -509,7 +533,7 @@ export default function StudyPlanView() {
                         <div>
                           <h4 className="text-sm font-medium text-gray-700 mb-2">推荐资源</h4>
                           <ul className="text-sm space-y-1">
-                            {phase.recommendedResources.map((resource: string, i: number) => (
+                            {(phase.recommendedResources || []).map((resource: string, i: number) => (
                               <li key={i} className="flex items-start">
                                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
                                 {resource}
@@ -536,5 +560,32 @@ export default function StudyPlanView() {
         </div>
       </div>
     </div>
+  );
+}
+
+// 导出带Suspense的主组件
+export default function StudyPlanView() {
+  return (
+    <Suspense fallback={
+      <div className="container flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary border-t-transparent animate-spin rounded-full"></div>
+          <p className="text-lg">加载备考规划中...</p>
+        </div>
+      </div>
+    }>
+      <RouterProvider>
+        {(router) => (
+          <RouteParamsProvider>
+            {(params) => (
+              <StudyPlanViewContent 
+                planId={params.id || ''} 
+                router={router}
+              />
+            )}
+          </RouteParamsProvider>
+        )}
+      </RouterProvider>
+    </Suspense>
   );
 } 

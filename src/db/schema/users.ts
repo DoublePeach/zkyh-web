@@ -5,6 +5,9 @@
  */
 import { pgTable, serial, text, timestamp, integer } from 'drizzle-orm/pg-core';
 
+// 学习模式枚举类型
+export type StudyMode = 'hard' | 'hero' | 'normal' | 'easy';
+
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),                        // 用户唯一标识
   username: text('username').notNull(),                 // 用户名
@@ -16,6 +19,7 @@ export const users = pgTable('users', {
   studyTimePerDay: integer('study_time_per_day'),       // 每日学习时间(小时)
   examDate: timestamp('exam_date'),                     // 目标考试日期
   nursingAssistantUserId: text('nursing_assistant_user_id'), // 护理助手APP用户ID
+  studyMode: text('study_mode').default('normal'),      // 学习模式(hard/hero/normal/easy)
   createdAt: timestamp('created_at').defaultNow().notNull(), // 创建时间
   updatedAt: timestamp('updated_at').defaultNow().notNull(), // 更新时间
 }); 

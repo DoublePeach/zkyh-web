@@ -13,9 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Book, BookOpen, Clock, CheckCircle, Lightbulb, Star } from 'lucide-react';
+import { ArrowLeft, Book, BookOpen, Clock, CheckCircle, Lightbulb, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/use-auth-store';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+// 每页显示的知识点数量
+const ITEMS_PER_PAGE = 3;
 
 interface Task {
   title: string;
@@ -102,6 +106,10 @@ export default function DailyLearningPage() {
   const [dayFormatted, setDayFormatted] = useState('');
   const [practicalTasks, setPracticalTasks] = useState<Task[]>([]);
   const [otherTasks, setOtherTasks] = useState<Task[]>([]);
+  
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedCards, setExpandedCards] = useState<Record<number, boolean>>({});
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -262,6 +270,35 @@ export default function DailyLearningPage() {
     router.back();
   };
   
+  // 分页逻辑
+  const totalPages = Math.ceil(knowledgePoints.length / ITEMS_PER_PAGE);
+  const currentPageItems = knowledgePoints.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE, 
+    currentPage * ITEMS_PER_PAGE
+  );
+  
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+  
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+  
+  // 切换卡片展开/折叠状态
+  const toggleCardExpand = (cardId: number) => {
+    setExpandedCards(prev => ({
+      ...prev,
+      [cardId]: !prev[cardId]
+    }));
+  };
+  
   if (loading) {
     return (
       <div className="container flex items-center justify-center min-h-screen">
@@ -364,51 +401,105 @@ export default function DailyLearningPage() {
             </div>
           ) : knowledgePoints.length > 0 ? (
             <div className="space-y-6">
-              {knowledgePoints.map((kp) => (
-                <Card key={kp.id} className="overflow-hidden">
-                  <CardHeader className="bg-gray-50 border-b pb-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg font-semibold">{kp.title}</CardTitle>
-                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                          <span 
-                            className={`px-1.5 py-0.5 rounded ${
-                              isPracticalSubject(kp.subjectName) 
-                                ? 'bg-blue-100 text-blue-600' 
-                                : 'bg-gray-100'
-                            }`}
-                          >
-                            {kp.subjectName}
-                          </span>
-                          <span>•</span>
-                          <span>{kp.chapterName}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 font-medium">
-                        <span className="text-xs text-primary">重要度: {kp.importance}</span>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-5">
-                    <div className="prose prose-sm max-w-none prose-headings:font-semibold prose-headings:text-gray-900 prose-p:text-gray-700">
-                      <div className="whitespace-pre-line">{kp.content}</div>
-                    </div>
-                    
-                    {kp.keywords && kp.keywords.length > 0 && (
-                      <div className="mt-5 pt-4 border-t border-gray-100">
-                        <p className="text-xs font-medium text-gray-700 mb-2">关键词:</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {kp.keywords.map((keyword, idx) => (
-                            <span key={idx} className="px-2.5 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">
-                              {keyword}
+              {/* 知识点分页提示 */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3 text-sm">
+                  <span className="text-gray-500">显示 {currentPageItems.length} 个知识点（共 {knowledgePoints.length} 个）</span>
+                  <div className="text-gray-700">
+                    第 {currentPage}/{totalPages} 页
+                  </div>
+                </div>
+              )}
+              
+              {/* 知识点卡片列表 */}
+              {currentPageItems.map((kp) => (
+                <Collapsible 
+                  key={kp.id}
+                  open={expandedCards[kp.id] || false}
+                  onOpenChange={() => toggleCardExpand(kp.id)}
+                  className="border rounded-lg overflow-hidden shadow-sm"
+                >
+                  <div className="bg-gray-50 border-b p-4">
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex justify-between items-start">
+                        <div className="text-left">
+                          <h3 className="text-lg font-semibold">{kp.title}</h3>
+                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                            <span 
+                              className={`px-1.5 py-0.5 rounded ${
+                                isPracticalSubject(kp.subjectName) 
+                                  ? 'bg-blue-100 text-blue-600' 
+                                  : 'bg-gray-100'
+                              }`}
+                            >
+                              {kp.subjectName}
                             </span>
-                          ))}
+                            <span>•</span>
+                            <span>{kp.chapterName}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 font-medium mr-2">
+                            <span className="text-xs text-primary">重要度: {kp.importance}</span>
+                          </div>
+                          <div className="text-gray-400 transform transition-transform duration-200 ease-in-out">
+                            {expandedCards[kp.id] ? (
+                              <ChevronRight className="h-5 w-5 rotate-90" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5" />
+                            )}
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CollapsibleTrigger>
+                  </div>
+                  
+                  <CollapsibleContent>
+                    <div className="p-5 bg-white">
+                      <div className="prose prose-sm max-w-none prose-headings:font-semibold prose-headings:text-gray-900 prose-p:text-gray-700">
+                        <div className="whitespace-pre-line">{kp.content}</div>
+                      </div>
+                      
+                      {kp.keywords && kp.keywords.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-100">
+                          <p className="text-xs font-medium text-gray-700 mb-2">关键词:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {kp.keywords.map((keyword, idx) => (
+                              <span key={idx} className="px-2.5 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">
+                                {keyword}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               ))}
+              
+              {/* 分页控制 */}
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-4 mt-4">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={goToPrevPage} 
+                    disabled={currentPage === 1}
+                    className="flex items-center"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" /> 上一页
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={goToNextPage} 
+                    disabled={currentPage === totalPages}
+                    className="flex items-center"
+                  >
+                    下一页 <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-10 bg-gray-50 rounded-lg">

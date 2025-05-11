@@ -30,10 +30,10 @@ export async function GET(
     
     if (!moduleId) {
       console.error('缺少模块ID参数');
-      return NextResponse.json(
-        { error: '缺少模块ID' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: '缺少模块ID' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
     
     console.log(`正在获取模块[${moduleId}]的任务...`);
@@ -49,7 +49,10 @@ export async function GET(
     
     console.log(`已获取模块[${moduleId}]的任务:`, response.data ? response.data.length : 0);
     
-    return NextResponse.json({ tasks: response.data || [] }, { status: 200 });
+    return new Response(JSON.stringify({ tasks: response.data || [] }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   } catch (error) {
     console.error('获取模块任务API错误:', error);
     return NextResponse.json(

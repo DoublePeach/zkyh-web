@@ -6,13 +6,16 @@ import { users } from '@/db/schema';
 export async function GET() {
   try {
     const allUsers = await db.select().from(users);
-    return NextResponse.json(allUsers);
+    return new Response(JSON.stringify(allUsers), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   } catch (error) {
     console.error('Failed to fetch users:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch users' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: 'Failed to fetch users' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
@@ -23,10 +26,10 @@ export async function POST(request: Request) {
     const { username, password, profession, currentTitle, targetTitle } = body;
 
     if (!username || !password || !profession || !currentTitle || !targetTitle) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: 'Missing required fields' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
 
     // 创建用户时所需的最小字段
@@ -39,12 +42,15 @@ export async function POST(request: Request) {
       // 可选字段将使用默认值
     }).returning();
 
-    return NextResponse.json(newUser[0], { status: 201 });
+    return new Response(JSON.stringify(newUser[0]), { 
+      status: 201,
+      headers: { 'Content-Type': 'application/json' }
+    });
   } catch (error) {
     console.error('Failed to create user:', error);
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: 'Failed to create user' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 } 

@@ -61,7 +61,10 @@ export function DrawerNav() {
           priority
           className="object-contain"
         />
-        <span className="text-xl font-bold text-gray-900">智考引航</span>
+        <div className="flex flex-col">
+          <span className="text-xl font-bold text-gray-900">智考引航</span>
+          <span className="text-[10px] text-pink-600 -mt-1">测试体验版</span>
+        </div>
       </div>
       
       <div className="flex items-center gap-2">
@@ -86,7 +89,10 @@ export function DrawerNav() {
                   className="object-contain"
                 />
                 <div>
-                  <SheetTitle className="text-left">智考引航</SheetTitle>
+                  <div className="flex items-baseline gap-2">
+                    <SheetTitle className="text-left">智考引航</SheetTitle>
+                    <span className="text-xs text-pink-600">测试体验版</span>
+                  </div>
                   <p className="text-sm text-gray-500">医护考试备考助手</p>
                 </div>
               </div>

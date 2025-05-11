@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
     
     if (!userId || !formData) {
       console.error('缺少必要参数');
-      return NextResponse.json(
-        { error: '缺少必要参数' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: '缺少必要参数' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
     
     // 验证用户是否存在

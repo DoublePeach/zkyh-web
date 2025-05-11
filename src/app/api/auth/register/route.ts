@@ -38,10 +38,10 @@ export async function POST(req: Request) {
     const existingUser = await db.select().from(users).where(eq(users.username, username)).limit(1);
     
     if (existingUser.length > 0) {
-      return NextResponse.json(
-        { error: '用户名已存在' },
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: '用户名已存在' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
     }
     
     // 创建用户
@@ -71,9 +71,9 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     console.error('注册失败:', error);
-    return NextResponse.json(
-      { error: '注册失败，请稍后再试' },
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: '注册失败，请稍后再试' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 } 

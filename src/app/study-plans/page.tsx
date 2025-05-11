@@ -29,19 +29,38 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/use-auth-store';
 import { getUserStudyPlans, deleteStudyPlan } from '@/lib/db-client';
-import { CalendarDays, ChevronRight, Calendar, Trash, Plus, BookOpen, PenToolIcon, ArrowLeft, Clock } from 'lucide-react';
+import { CalendarDays, ChevronRight, Calendar, Trash, Plus, BookOpen, PenToolIcon, ArrowLeft, Clock, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import type { studyPlans } from '@/db/schema';
 import type { InferSelectModel } from 'drizzle-orm';
+import { FeedbackDialog } from '@/components/forms/feedback-dialog';
 
 type StudyPlan = InferSelectModel<typeof studyPlans>;
 
-function StudyPlansContent() {
+// 带Suspense的路由提供器
+function RouterProvider({ children }: { children: (router: ReturnType<typeof useRouter>) => React.ReactNode }) {
   const router = useRouter();
+  return <>{children(router)}</>;
+}
+
+function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> }) {
   const { isAuthenticated, user } = useAuthStore();
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingPlanId, setDeletingPlanId] = useState<number | null>(null);
+  
+  // 导航处理函数
+  const handleNavigation = useCallback((href: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // 使用setTimeout确保在React渲染周期之外执行导航，避免状态更新干扰
+    setTimeout(() => {
+      router.push(href);
+    }, 10);
+  }, [router]);
   
   // 获取所有备考规划
   const fetchStudyPlans = useCallback(async () => {
@@ -130,22 +149,35 @@ function StudyPlansContent() {
       {/* 顶部导航栏 */}
       <div className="bg-white p-4 shadow-sm">
         <div className="container mx-auto flex items-center">
-          <Link href="/" className="flex items-center text-gray-600 hover:text-gray-900">
+          <Button 
+            variant="link"
+            className="p-0 flex items-center text-gray-600 hover:text-gray-900" 
+            onClick={(e) => handleNavigation('/', e)}
+          >
             <ArrowLeft className="w-5 h-5 mr-2" />
             <span className="text-xl font-semibold">学习中心</span>
-          </Link>
+          </Button>
         </div>
       </div>
       
       <div className="container max-w-4xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">我的备考规划</h1>
-          <Link href="/survey">
-            <Button className="flex items-center gap-2">
+          <div className="flex gap-2">
+            <FeedbackDialog source="study_plans">
+              <Button variant="outline" className="flex items-center gap-2 text-pink-600 border-pink-600 hover:bg-pink-50">
+                <MessageSquare className="h-4 w-4" />
+                提供反馈
+              </Button>
+            </FeedbackDialog>
+            <Button 
+              className="flex items-center gap-2"
+              onClick={(e) => handleNavigation('/survey', e)}
+            >
               <Plus className="h-4 w-4" />
               创建新规划
             </Button>
-          </Link>
+          </div>
         </div>
         
         {loading ? (
@@ -244,27 +276,25 @@ function StudyPlansContent() {
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <Link href={`/study-plan/${currentPlan?.id}`}>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="flex items-center gap-1"
-                      >
-                        <BookOpen className="h-4 w-4" />
-                        查看计划
-                      </Button>
-                    </Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={(e) => currentPlan && handleNavigation(`/study-plan/${currentPlan.id}`, e)}
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      查看计划
+                    </Button>
                     
-                    <Link href={`/study-plan/${currentPlan?.id}/phase/${currentPlan ? getFirstPhaseId(currentPlan) : 1}`}>
-                      <Button
-                        size="sm"
-                        className="flex items-center gap-1"
-                      >
-                        <PenToolIcon className="h-4 w-4" />
-                        开始学习
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                    <Button
+                      size="sm"
+                      className="flex items-center gap-1"
+                      onClick={(e) => currentPlan && handleNavigation(`/study-plan/${currentPlan.id}/phase/${getFirstPhaseId(currentPlan)}`, e)}
+                    >
+                      <PenToolIcon className="h-4 w-4" />
+                      开始学习
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardFooter>
               </Card>
@@ -355,16 +385,15 @@ function StudyPlansContent() {
                         </div>
                         
                         <div className="flex items-center gap-3">
-                          <Link href={`/study-plan/${plan.id}`}>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex items-center gap-1"
-                            >
-                              <BookOpen className="h-4 w-4" />
-                              查看计划
-                            </Button>
-                          </Link>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex items-center gap-1"
+                            onClick={(e) => handleNavigation(`/study-plan/${plan.id}`, e)}
+                          >
+                            <BookOpen className="h-4 w-4" />
+                            查看计划
+                          </Button>
                         </div>
                       </CardFooter>
                     </Card>
@@ -384,12 +413,13 @@ function StudyPlansContent() {
               <p className="text-gray-500 mb-6 text-center max-w-md">
                 创建个性化备考规划，制定学习目标和进度，系统化备考更高效
               </p>
-              <Link href="/survey">
-                <Button className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  创建备考规划
-                </Button>
-              </Link>
+              <Button 
+                className="flex items-center gap-2"
+                onClick={(e) => handleNavigation('/survey', e)}
+              >
+                <Plus className="h-4 w-4" />
+                创建备考规划
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -408,7 +438,9 @@ export default function StudyPlansPage() {
         </div>
       </div>
     }>
-      <StudyPlansContent />
+      <RouterProvider>
+        {(router) => <StudyPlansContent router={router} />}
+      </RouterProvider>
     </Suspense>
   );
 } 
