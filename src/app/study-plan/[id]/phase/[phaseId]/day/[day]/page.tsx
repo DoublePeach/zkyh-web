@@ -206,6 +206,51 @@ export default function DailyLearningPage() {
     setOtherTasks(others);
   };
   
+  /**
+   * @description 解析知识点标题中的编号并排序
+   * @param points 知识点数组
+   * @returns 排序后的知识点数组
+   */
+  const sortKnowledgePointsByTitle = (points: KnowledgePoint[]): KnowledgePoint[] => {
+    return [...points].sort((a, b) => {
+      // 提取编号部分 (如 1.1.1, 5.1.3 等)
+      const getNumberPrefix = (title: string) => {
+        const match = title.match(/^(\d+(\.\d+)*)/);
+        return match ? match[0] : '';
+      };
+      
+      const prefixA = getNumberPrefix(a.title);
+      const prefixB = getNumberPrefix(b.title);
+      
+      if (prefixA && prefixB) {
+        // 如果两者都有编号，按编号排序
+        const partsA = prefixA.split('.').map(Number);
+        const partsB = prefixB.split('.').map(Number);
+        
+        // 比较每一位数字
+        for (let i = 0; i < Math.min(partsA.length, partsB.length); i++) {
+          if (partsA[i] !== partsB[i]) {
+            return partsA[i] - partsB[i];
+          }
+        }
+        
+        // 如果前面的数字都相同，长度较短的编号排在前面
+        return partsA.length - partsB.length;
+      }
+      
+      // 如果只有一个有编号，有编号的排在前面
+      if (prefixA) return -1;
+      if (prefixB) return 1;
+      
+      // 如果都没有编号，按重要性和标题排序
+      if (a.importance !== b.importance) {
+        return b.importance - a.importance;
+      }
+      
+      return a.title.localeCompare(b.title);
+    });
+  };
+  
   const fetchKnowledgePoints = async (planId: string, dailyPlan: DailyPlan) => {
     if (!dailyPlan.subjects.length) return;
     
@@ -223,8 +268,15 @@ export default function DailyLearningPage() {
       const data = await response.json();
       
       if (data.success && data.data.knowledgePoints) {
-        // 按重要性排序，重要的在前面
-        const sortedPoints = [...data.data.knowledgePoints].sort((a, b) => b.importance - a.importance);
+        // 添加调试日志
+        console.log('排序前的知识点:', data.data.knowledgePoints.map((p: KnowledgePoint) => p.title));
+        
+        // 修改这里：改用标题编号排序
+        const sortedPoints = sortKnowledgePointsByTitle(data.data.knowledgePoints);
+        
+        // 添加调试日志
+        console.log('排序后的知识点:', sortedPoints.map((p: KnowledgePoint) => p.title));
+        
         setKnowledgePoints(sortedPoints);
       }
     } catch (error) {
