@@ -91,6 +91,29 @@ function cachePlanData(planId: string, data: { plan: any; phases: any[]; dailyPl
   }
 }
 
+// 存储和获取上一个浏览位置
+function storeLastViewedWeek(planId: string, phaseId: string, weekIndex: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = `last_viewed_week_${planId}_${phaseId}`;
+    localStorage.setItem(key, weekIndex.toString());
+  } catch (error) {
+    console.error('存储上次浏览位置失败:', error);
+  }
+}
+
+function getLastViewedWeek(planId: string, phaseId: string): number | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const key = `last_viewed_week_${planId}_${phaseId}`;
+    const stored = localStorage.getItem(key);
+    return stored ? parseInt(stored, 10) : null;
+  } catch (error) {
+    console.error('获取上次浏览位置失败:', error);
+    return null;
+  }
+}
+
 export default function DailyLearningPage() {
   const params = useParams();
   const router = useRouter();
@@ -121,6 +144,7 @@ export default function DailyLearningPage() {
         // 获取参数
         const planId = String(params?.id);
         const day = String(params?.day);
+        const phaseId = String(params?.phaseId);
         
         if (!planId || !day) {
           toast.error('缺少必要参数');
@@ -153,6 +177,11 @@ export default function DailyLearningPage() {
         
         // 获取知识点信息
         fetchKnowledgePoints(planId, matchingPlan);
+
+        // 计算当前日期所在的周数，并存储到localStorage
+        if (phaseId) {
+          calculateAndStoreWeekIndex(planId, phaseId, matchingPlan);
+        }
       } catch (error) {
         console.error('加载每日学习计划失败:', error);
         toast.error('加载学习内容失败');
@@ -163,6 +192,67 @@ export default function DailyLearningPage() {
     
     loadDailyPlan();
   }, [isAuthenticated, params, router]);
+
+  // 计算当前日期所在的周数并保存
+  const calculateAndStoreWeekIndex = (planId: string, phaseId: string, dailyPlan: DailyPlan) => {
+    try {
+      const cachedData = getCachedPlanData(planId);
+      if (!cachedData) return;
+
+      // 获取该阶段的所有日期
+      const phasePlans = cachedData.dailyPlans.filter(
+        (p: DailyPlan) => p.phaseId.toString() === phaseId
+      );
+
+      if (!phasePlans.length) return;
+
+      // 为每个计划添加日期对象
+      const plansWithDates = phasePlans.map((p: DailyPlan) => ({
+        ...p,
+        dateObj: new Date(p.date)
+      }));
+
+      // 按日期排序
+      plansWithDates.sort((a: DailyPlan, b: DailyPlan) => {
+        return a.dateObj!.getTime() - b.dateObj!.getTime();
+      });
+
+      // 获取日期所在的周数（通过比较日期）
+      const targetDate = new Date(dailyPlan.date);
+      const getMonday = (date: Date) => {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.setDate(diff));
+      };
+
+      // 创建周数映射
+      const weekMap = new Map();
+      let weekIndex = 0;
+
+      plansWithDates.forEach((plan: DailyPlan) => {
+        const monday = getMonday(plan.dateObj!);
+        const mondayKey = monday.toISOString().split('T')[0];
+        
+        if (!weekMap.has(mondayKey)) {
+          weekMap.set(mondayKey, weekIndex++);
+        }
+      });
+
+      // 获取当前日期所在的周一
+      const currentMonday = getMonday(targetDate);
+      const currentMondayKey = currentMonday.toISOString().split('T')[0];
+      
+      if (weekMap.has(currentMondayKey)) {
+        const currentWeekIndex = weekMap.get(currentMondayKey);
+        // 存储到localStorage
+        storeLastViewedWeek(planId, phaseId, currentWeekIndex);
+        console.log(`已保存当前周索引: ${currentWeekIndex}`);
+      }
+    } catch (error) {
+      console.error('计算周索引失败:', error);
+    }
+  };
   
   // 分类任务为专业实践能力相关和其他
   const categorizeTasks = (plan: DailyPlan) => {
@@ -316,6 +406,20 @@ export default function DailyLearningPage() {
   };
   
   const handleGoBack = () => {
+    // 使用存储的周索引返回正确位置
+    const planId = String(params?.id);
+    const phaseId = String(params?.phaseId);
+    
+    if (planId && phaseId) {
+      const lastWeekIndex = getLastViewedWeek(planId, phaseId);
+      if (lastWeekIndex !== null) {
+        // 将周索引附加为查询参数，以便相应页面能够恢复正确位置
+        router.push(`/study-plan/${planId}/phase/${phaseId}?week=${lastWeekIndex}`);
+        return;
+      }
+    }
+    
+    // 如果没有存储的索引或缺少参数，则返回上一个页面
     router.back();
   };
   
@@ -350,9 +454,9 @@ export default function DailyLearningPage() {
   
   if (loading) {
     return (
-      <div className="container flex items-center justify-center min-h-screen">
+      <div className="container flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-primary border-t-transparent animate-spin rounded-full"></div>
+          <div className="h-12 w-12 border-4 border-pink-500 border-t-transparent animate-spin rounded-full"></div>
           <p className="text-lg">加载学习内容中...</p>
         </div>
       </div>
@@ -365,7 +469,7 @@ export default function DailyLearningPage() {
         <div className="flex flex-col items-center justify-center text-center">
           <h1 className="text-2xl font-bold mb-4">未找到学习内容</h1>
           <p className="text-gray-500 mb-6">找不到当日的学习计划内容</p>
-          <Button onClick={handleGoBack}>返回</Button>
+          <Button className="bg-pink-600 hover:bg-pink-700" onClick={handleGoBack}>返回</Button>
         </div>
       </div>
     );
@@ -379,10 +483,10 @@ export default function DailyLearningPage() {
   const practicalSubjects = dailyPlan.subjects.filter(isPracticalSubject);
   
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
+    <div className="container max-w-4xl mx-auto py-8 px-4 bg-gray-50">
       {/* 页面头部 */}
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleGoBack}>
+        <Button variant="ghost" size="icon" className="h-10 w-10 text-pink-600" onClick={handleGoBack}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
@@ -390,7 +494,7 @@ export default function DailyLearningPage() {
           <div className="flex items-center mt-2">
             <span className="text-sm text-muted-foreground mr-2">学习进度: {progress}% ({completedTaskCount}/{totalTasks})</span>
             <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-primary" style={{ width: `${progress}%` }}></div>
+              <div className="h-full bg-pink-500" style={{ width: `${progress}%` }}></div>
             </div>
           </div>
         </div>
@@ -403,9 +507,9 @@ export default function DailyLearningPage() {
           {dailyPlan.subjects.map((subject, idx) => (
             <span 
               key={idx} 
-              className={`inline-block px-2 py-1 rounded text-sm ${
+              className={`inline-block px-2 py-1 rounded-full text-sm ${
                 isPracticalSubject(subject) 
-                  ? 'bg-blue-100 text-blue-700 font-medium' 
+                  ? 'bg-pink-100 text-pink-700 font-medium' 
                   : 'bg-gray-100 text-gray-600'
               }`}
             >
@@ -414,8 +518,8 @@ export default function DailyLearningPage() {
           ))}
         </div>
         {practicalSubjects.length > 0 && (
-          <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-100">
-            <div className="flex items-center text-sm text-blue-700">
+          <div className="mt-2 p-2 bg-pink-50 rounded-md border border-pink-200">
+            <div className="flex items-center text-sm text-pink-700">
               <Star className="h-4 w-4 mr-1" />
               <span>重点关注专业实践能力科目</span>
             </div>
@@ -426,13 +530,13 @@ export default function DailyLearningPage() {
       {/* 选项卡内容 */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="content">
+          <TabsTrigger value="content" className="data-[state=active]:bg-pink-600 data-[state=active]:text-white">
             <div className="flex items-center gap-2">
               <Book className="h-4 w-4" />
               <span>学习内容</span>
             </div>
           </TabsTrigger>
-          <TabsTrigger value="quiz">
+          <TabsTrigger value="quiz" className="data-[state=active]:bg-pink-600 data-[state=active]:text-white">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               <span>学习测验</span>
@@ -445,14 +549,14 @@ export default function DailyLearningPage() {
           {/* 知识点内容 */}
           {contentLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="h-8 w-8 border-4 border-primary border-t-transparent animate-spin rounded-full"></div>
+              <div className="h-8 w-8 border-4 border-pink-500 border-t-transparent animate-spin rounded-full"></div>
               <span className="ml-3 text-gray-500">加载知识点内容...</span>
             </div>
           ) : knowledgePoints.length > 0 ? (
             <div className="space-y-6">
               {/* 知识点分页提示 */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3 text-sm">
+                <div className="flex items-center justify-between bg-white rounded-xl p-3 text-sm shadow-sm">
                   <span className="text-gray-500">显示 {currentPageItems.length} 个知识点（共 {knowledgePoints.length} 个）</span>
                   <div className="text-gray-700">
                     第 {currentPage}/{totalPages} 页
@@ -466,7 +570,7 @@ export default function DailyLearningPage() {
                   key={kp.id}
                   open={expandedCards[kp.id] || false}
                   onOpenChange={() => toggleCardExpand(kp.id)}
-                  className="border rounded-lg overflow-hidden shadow-sm"
+                  className="border rounded-xl overflow-hidden shadow-sm bg-white"
                 >
                   <div className="bg-gray-50 border-b p-4">
                     <CollapsibleTrigger className="w-full">
@@ -475,9 +579,9 @@ export default function DailyLearningPage() {
                           <h3 className="text-lg font-semibold">{kp.title}</h3>
                           <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
                             <span 
-                              className={`px-1.5 py-0.5 rounded ${
+                              className={`px-1.5 py-0.5 rounded-full ${
                                 isPracticalSubject(kp.subjectName) 
-                                  ? 'bg-blue-100 text-blue-600' 
+                                  ? 'bg-pink-100 text-pink-700' 
                                   : 'bg-gray-100'
                               }`}
                             >
@@ -488,8 +592,8 @@ export default function DailyLearningPage() {
                           </div>
                         </div>
                         <div className="flex items-center">
-                          <div className="flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 font-medium mr-2">
-                            <span className="text-xs text-primary">重要度: {kp.importance}</span>
+                          <div className="flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 font-medium mr-2">
+                            <span className="text-xs text-pink-700">重要度: {kp.importance}</span>
                           </div>
                           <div className="text-gray-400 transform transition-transform duration-200 ease-in-out">
                             {expandedCards[kp.id] ? (
@@ -534,7 +638,7 @@ export default function DailyLearningPage() {
                     size="sm" 
                     onClick={goToPrevPage} 
                     disabled={currentPage === 1}
-                    className="flex items-center"
+                    className="flex items-center border-pink-200 text-pink-600 hover:bg-pink-50"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" /> 上一页
                   </Button>
@@ -543,7 +647,7 @@ export default function DailyLearningPage() {
                     size="sm" 
                     onClick={goToNextPage} 
                     disabled={currentPage === totalPages}
-                    className="flex items-center"
+                    className="flex items-center border-pink-200 text-pink-600 hover:bg-pink-50"
                   >
                     下一页 <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
@@ -551,7 +655,7 @@ export default function DailyLearningPage() {
               )}
             </div>
           ) : (
-            <div className="text-center py-10 bg-gray-50 rounded-lg">
+            <div className="text-center py-10 bg-white rounded-xl shadow-sm">
               <Book className="h-12 w-12 mx-auto text-gray-300 mb-3" />
               <h3 className="text-lg font-medium text-gray-800 mb-1">暂无相关知识点</h3>
               <p className="text-gray-500">请完成学习任务获取今日的学习内容</p>
@@ -561,7 +665,7 @@ export default function DailyLearningPage() {
           {/* 学习任务 - 专业实践能力科目 */}
           {practicalTasks.length > 0 && (
             <div className="mt-8">
-              <h2 className="text-lg font-semibold mb-4 flex items-center text-blue-700">
+              <h2 className="text-lg font-semibold mb-4 flex items-center text-pink-700">
                 <Star className="h-4 w-4 mr-2" />
                 专业实践能力学习任务
               </h2>
@@ -571,12 +675,12 @@ export default function DailyLearningPage() {
                     t.title === task.title && t.description === task.description
                   );
                   return (
-                    <Card key={index} className={`border ${task.isCompleted ? 'bg-blue-50' : 'border-blue-100'}`}>
+                    <Card key={index} className={`border-none rounded-xl shadow-sm ${task.isCompleted ? 'bg-pink-50' : 'border-pink-100'}`}>
                       <CardHeader className="py-3 px-4">
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-base font-medium">{task.title}</CardTitle>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs bg-blue-100 px-2 py-1 rounded text-blue-600 whitespace-nowrap">
+                            <span className="text-xs bg-pink-100 px-2 py-1 rounded-full text-pink-700 whitespace-nowrap">
                               <Clock className="h-3 w-3 inline mr-1" /> {task.duration}分钟
                             </span>
                             <Button
@@ -598,7 +702,7 @@ export default function DailyLearningPage() {
                             <ul className="text-xs text-gray-600 space-y-1">
                               {task.resources.map((resource, idx) => (
                                 <li key={idx} className="flex items-center gap-1">
-                                  <BookOpen className="h-3 w-3 text-blue-500" />
+                                  <BookOpen className="h-3 w-3 text-pink-500" />
                                   <span>{resource}</span>
                                 </li>
                               ))}
@@ -623,12 +727,12 @@ export default function DailyLearningPage() {
                     t.title === task.title && t.description === task.description
                   );
                   return (
-                    <Card key={index} className={`border ${task.isCompleted ? 'bg-gray-50' : ''}`}>
+                    <Card key={index} className={`border-none rounded-xl shadow-sm ${task.isCompleted ? 'bg-gray-50' : ''}`}>
                       <CardHeader className="py-3 px-4">
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-base font-medium">{task.title}</CardTitle>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 whitespace-nowrap">
+                            <span className="text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-600 whitespace-nowrap">
                               <Clock className="h-3 w-3 inline mr-1" /> {task.duration}分钟
                             </span>
                             <Button
@@ -671,12 +775,12 @@ export default function DailyLearningPage() {
               <h2 className="text-lg font-semibold mb-4">今日学习任务</h2>
               <div className="space-y-4">
                 {dailyPlan.tasks.map((task, index) => (
-                  <Card key={index} className={`border ${task.isCompleted ? 'bg-gray-50' : ''}`}>
+                  <Card key={index} className={`border-none rounded-xl shadow-sm ${task.isCompleted ? 'bg-gray-50' : ''}`}>
                     <CardHeader className="py-3 px-4">
                       <div className="flex justify-between items-start">
                         <CardTitle className="text-base font-medium">{task.title}</CardTitle>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 whitespace-nowrap">
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded-full text-gray-600 whitespace-nowrap">
                             <Clock className="h-3 w-3 inline mr-1" /> {task.duration}分钟
                           </span>
                           <Button
@@ -714,7 +818,7 @@ export default function DailyLearningPage() {
           
           {/* 复习建议 */}
           {dailyPlan.reviewTips && (
-            <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-md">
+            <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-xl">
               <h3 className="text-sm font-medium flex items-center gap-1 text-amber-800 mb-2">
                 <Lightbulb className="h-4 w-4" />
                 <span>复习建议</span>
@@ -726,10 +830,14 @@ export default function DailyLearningPage() {
         
         {/* 学习测验选项卡 */}
         <TabsContent value="quiz">
-          <div className="bg-gray-50 p-8 rounded-lg text-center border">
+          <div className="bg-white p-8 rounded-xl text-center border-none shadow-sm">
             <h3 className="text-lg font-medium mb-4">学习测验功能开发中</h3>
             <p className="text-gray-500 mb-6">该功能即将上线，敬请期待！</p>
-            <Button variant="outline" onClick={() => setActiveTab('content')}>
+            <Button 
+              variant="outline" 
+              className="border-pink-200 text-pink-600 hover:bg-pink-50"
+              onClick={() => setActiveTab('content')}
+            >
               返回学习内容
             </Button>
           </div>

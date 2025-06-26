@@ -185,21 +185,21 @@ export default function SurveyPage() {
       {/* 进度条 */}
       <div className="w-full h-2 bg-gray-200">
         <div 
-          className="h-full bg-indigo-500 transition-all duration-300"
+          className="h-full bg-pink-500 transition-all duration-300"
           style={{ width: progressWidth() }}
         ></div>
       </div>
       
       <div className="container mx-auto px-4 py-8">
         {/* 考试信息提示 */}
-        <div className="max-w-md mx-auto mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="max-w-md mx-auto mb-6 p-4 bg-pink-50 rounded-lg border border-pink-200">
           <div className="flex items-start">
-            <Calendar className="w-5 h-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+            <Calendar className="w-5 h-5 text-pink-500 mt-0.5 mr-2 flex-shrink-0" />
             <div>
-              <p className="text-sm text-blue-800 font-medium">
+              <p className="text-sm text-pink-800 font-medium">
                 初级护师职称考试时间为2026年4月11日-4月12日
               </p>
-              <p className="text-sm text-blue-600 mt-1">
+              <p className="text-sm text-pink-600 mt-1">
                 距离考试还有 <span className="font-medium">{getDaysUntilExam()}</span> 天
               </p>
             </div>
@@ -218,12 +218,12 @@ export default function SurveyPage() {
                 onValueChange={(value) => updateFormData('weekdaysCount', value as '1-2' | '3-4' | '5')}
                 className="space-y-4"
               >
-                <div className={`border ${formData.weekdaysCount === '1-2' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekdaysCount === '1-2' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="1-2" id="days-1-2" className="hidden" />
                   <Label htmlFor="days-1-2" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdaysCount === '1-2' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdaysCount === '1-2' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekdaysCount === '1-2' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -232,12 +232,12 @@ export default function SurveyPage() {
                   </Label>
                 </div>
                 
-                <div className={`border ${formData.weekdaysCount === '3-4' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekdaysCount === '3-4' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="3-4" id="days-3-4" className="hidden" />
                   <Label htmlFor="days-3-4" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdaysCount === '3-4' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdaysCount === '3-4' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekdaysCount === '3-4' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -246,12 +246,12 @@ export default function SurveyPage() {
                   </Label>
                 </div>
                 
-                <div className={`border ${formData.weekdaysCount === '5' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekdaysCount === '5' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="5" id="days-5" className="hidden" />
                   <Label htmlFor="days-5" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdaysCount === '5' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdaysCount === '5' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekdaysCount === '5' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -269,12 +269,12 @@ export default function SurveyPage() {
                 onValueChange={(value) => updateFormData('weekdayHours', value as '<1' | '1-2' | '2-3' | '3+')}
                 className="space-y-4"
               >
-                <div className={`border ${formData.weekdayHours === '<1' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekdayHours === '<1' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="<1" id="weekday-less1" className="hidden" />
                   <Label htmlFor="weekday-less1" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdayHours === '<1' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdayHours === '<1' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekdayHours === '<1' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -283,12 +283,12 @@ export default function SurveyPage() {
                   </Label>
                 </div>
                 
-                <div className={`border ${formData.weekdayHours === '1-2' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekdayHours === '1-2' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="1-2" id="weekday-1-2" className="hidden" />
                   <Label htmlFor="weekday-1-2" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdayHours === '1-2' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdayHours === '1-2' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekdayHours === '1-2' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -297,12 +297,12 @@ export default function SurveyPage() {
                   </Label>
                 </div>
                 
-                <div className={`border ${formData.weekdayHours === '2-3' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekdayHours === '2-3' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="2-3" id="weekday-2-3" className="hidden" />
                   <Label htmlFor="weekday-2-3" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdayHours === '2-3' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdayHours === '2-3' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekdayHours === '2-3' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -311,12 +311,12 @@ export default function SurveyPage() {
                   </Label>
                 </div>
                 
-                <div className={`border ${formData.weekdayHours === '3+' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekdayHours === '3+' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="3+" id="weekday-3plus" className="hidden" />
                   <Label htmlFor="weekday-3plus" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdayHours === '3+' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekdayHours === '3+' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekdayHours === '3+' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -329,7 +329,7 @@ export default function SurveyPage() {
             
             <div className="mt-8">
               <Button 
-                className="w-full bg-indigo-600 hover:bg-indigo-700" 
+                className="w-full bg-pink-600 hover:bg-pink-700" 
                 onClick={handleNext}
               >
                 下一步
@@ -350,12 +350,12 @@ export default function SurveyPage() {
                 onValueChange={(value) => updateFormData('weekendHours', value as '<2' | '2-4' | '4-6' | '6+')}
                 className="space-y-4"
               >
-                <div className={`border ${formData.weekendHours === '<2' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekendHours === '<2' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="<2" id="weekend-less2" className="hidden" />
                   <Label htmlFor="weekend-less2" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekendHours === '<2' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekendHours === '<2' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekendHours === '<2' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -364,12 +364,12 @@ export default function SurveyPage() {
                   </Label>
                 </div>
                 
-                <div className={`border ${formData.weekendHours === '2-4' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekendHours === '2-4' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="2-4" id="weekend-2-4" className="hidden" />
                   <Label htmlFor="weekend-2-4" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekendHours === '2-4' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekendHours === '2-4' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekendHours === '2-4' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -378,12 +378,12 @@ export default function SurveyPage() {
                   </Label>
                 </div>
                 
-                <div className={`border ${formData.weekendHours === '4-6' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekendHours === '4-6' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="4-6" id="weekend-4-6" className="hidden" />
                   <Label htmlFor="weekend-4-6" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekendHours === '4-6' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekendHours === '4-6' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekendHours === '4-6' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -392,12 +392,12 @@ export default function SurveyPage() {
                   </Label>
                 </div>
                 
-                <div className={`border ${formData.weekendHours === '6+' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} rounded-lg p-4`}>
+                <div className={`border ${formData.weekendHours === '6+' ? 'border-pink-500 bg-pink-50' : 'border-gray-200'} rounded-lg p-4`}>
                   <RadioGroupItem value="6+" id="weekend-6plus" className="hidden" />
                   <Label htmlFor="weekend-6plus" className="flex items-center cursor-pointer">
-                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekendHours === '6+' ? 'border-indigo-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
+                    <div className={`w-6 h-6 rounded-full border-2 ${formData.weekendHours === '6+' ? 'border-pink-500' : 'border-gray-300'} flex items-center justify-center mr-3`}>
                       {formData.weekendHours === '6+' && (
-                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                       )}
                     </div>
                     <div>
@@ -419,13 +419,14 @@ export default function SurveyPage() {
             
             <div className="mt-8 flex justify-between">
               <Button 
-                variant="outline" 
+                variant="outline"
+                className="border-pink-200 text-pink-600 hover:bg-pink-50"
                 onClick={handlePrevious}
               >
                 上一步
               </Button>
               <Button 
-                className="bg-indigo-600 hover:bg-indigo-700"
+                className="bg-pink-600 hover:bg-pink-700"
                 onClick={handleNext}
                 disabled={loading}
               >

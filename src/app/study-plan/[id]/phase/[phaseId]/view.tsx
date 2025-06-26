@@ -145,9 +145,9 @@ function isPracticalSubject(subject: string): boolean {
 function SubjectBadge({ subject }: { subject: string }) {
   const isPractical = isPracticalSubject(subject);
   return (
-    <span className={`px-2 py-1 text-xs rounded-md ${
+    <span className={`px-2 py-1 text-xs rounded-full ${
       isPractical 
-        ? 'bg-blue-100 text-blue-700 font-medium' 
+        ? 'bg-pink-100 text-pink-700 font-medium' 
         : 'bg-gray-100 text-gray-600'
     }`}>
       {subject}{isPractical && ' ★'}
@@ -195,6 +195,43 @@ function PhaseDetailViewContent({
   const [selectedWeekIndex, setSelectedWeekIndex] = useState<number | null>(null);
   const [showNoPlanModal, setShowNoPlanModal] = useState(false);
   const [noPlanModalDate, setNoPlanModalDate] = useState<string>("");
+
+  // 从URL获取周索引参数
+  const getWeekFromUrl = (): number | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const weekParam = urlParams.get('week');
+      return weekParam ? parseInt(weekParam, 10) : null;
+    } catch (error) {
+      console.error('从URL获取周索引失败:', error);
+      return null;
+    }
+  };
+
+  // 从localStorage获取上次浏览的周索引
+  const getLastViewedWeek = (): number | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const key = `last_viewed_week_${planId}_${phaseIdString}`;
+      const stored = localStorage.getItem(key);
+      return stored ? parseInt(stored, 10) : null;
+    } catch (error) {
+      console.error('获取上次浏览位置失败:', error);
+      return null;
+    }
+  };
+
+  // 保存当前选择的周索引
+  const saveSelectedWeekIndex = (index: number): void => {
+    if (typeof window === 'undefined') return;
+    try {
+      const key = `last_viewed_week_${planId}_${phaseIdString}`;
+      localStorage.setItem(key, index.toString());
+    } catch (error) {
+      console.error('保存周索引失败:', error);
+    }
+  };
 
   // CORE FUNCTIONS DEFINED AT TOP LEVEL (after hooks)
 
@@ -317,10 +354,30 @@ function PhaseDetailViewContent({
       const weeks = groupPhaseTasksIntoWeeks(phaseSpecificTasks);
       setGroupedWeeklyPlans(weeks);
 
+      // 恢复所选周的索引
       if (weeks.length > 0) {
-        if (selectedWeekIndex === null || selectedWeekIndex >= weeks.length || 
+        // 首先检查URL中是否有周索引参数
+        const weekFromUrl = getWeekFromUrl();
+        // 然后检查localStorage中是否有存储的周索引
+        const lastViewedWeek = getLastViewedWeek();
+        
+        if (weekFromUrl !== null && weekFromUrl >= 0 && weekFromUrl < weeks.length) {
+          // 如果URL中有有效的周索引，优先使用它
+          setSelectedWeekIndex(weekFromUrl);
+          console.log(`从URL恢复周索引: ${weekFromUrl}`);
+          
+          // 同时更新localStorage中的值
+          saveSelectedWeekIndex(weekFromUrl);
+        } else if (lastViewedWeek !== null && lastViewedWeek >= 0 && lastViewedWeek < weeks.length) {
+          // 如果localStorage中有有效的周索引，使用它
+          setSelectedWeekIndex(lastViewedWeek);
+          console.log(`从localStorage恢复周索引: ${lastViewedWeek}`);
+        } else if (selectedWeekIndex === null || selectedWeekIndex >= weeks.length || 
             (selectedWeekIndex !== null && weeks[selectedWeekIndex]?.startDateOfWeek?.getTime() !== groupedWeeklyPlans[selectedWeekIndex]?.startDateOfWeek?.getTime())) {
+          // 如果没有存储的索引或索引无效，使用默认逻辑（第一周）
           setSelectedWeekIndex(0);
+          // 存储默认索引
+          saveSelectedWeekIndex(0);
         }
       } else {
         setSelectedWeekIndex(null);
@@ -335,9 +392,9 @@ function PhaseDetailViewContent({
   // CONDITIONAL RETURNS for loading and no phase
   if (loading) {
     return (
-      <div className="container flex items-center justify-center min-h-screen">
+      <div className="container flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-primary border-t-transparent animate-spin rounded-full"></div>
+          <div className="h-12 w-12 border-4 border-pink-500 border-t-transparent animate-spin rounded-full"></div>
           <p className="text-lg">加载备考规划中...</p>
         </div>
       </div>
@@ -384,10 +441,10 @@ function PhaseDetailViewContent({
 
   // RENDER LOGIC
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
+    <div className="container max-w-4xl mx-auto py-6 px-4 bg-gray-50">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={goBackToStudyPlan}> {/* onClick calls goBackToStudyPlan */}
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-pink-600" onClick={goBackToStudyPlan}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -397,14 +454,10 @@ function PhaseDetailViewContent({
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right mr-2"><p className="text-sm text-gray-500">阶段完成度</p><p className="font-medium">{calculateOverallPhaseProgress()}%</p></div>
-          <div className="w-24"><Progress value={calculateOverallPhaseProgress()} className="h-2.5" /></div>
+          <div className="w-24"><Progress value={calculateOverallPhaseProgress()} className="h-2.5 bg-gray-200" /></div>
         </div>
       </div>
       
-      <Card className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-none shadow-sm">
-        <CardContent className="pt-6 pb-6"><p className="text-gray-700">{currentPhase.description}</p></CardContent>
-      </Card>
-
       <h2 className="text-xl font-bold mb-4 text-gray-900">每周学习任务</h2>
 
       {groupedWeeklyPlans.length > 0 && (
@@ -414,8 +467,12 @@ function PhaseDetailViewContent({
               <Button
                 key={week.weekNumberInPhase}
                 variant={selectedWeekIndex === index ? 'default' : 'outline'}
-                onClick={() => setSelectedWeekIndex(index)}
-                className="whitespace-nowrap"
+                onClick={() => {
+                  setSelectedWeekIndex(index);
+                  // 保存用户选择的周索引
+                  saveSelectedWeekIndex(index);
+                }}
+                className={`whitespace-nowrap ${selectedWeekIndex === index ? 'bg-pink-600 hover:bg-pink-700' : 'text-pink-600 border-pink-200 hover:bg-pink-50'}`}
               >
                 {week.weekLabel}
               </Button>
@@ -444,8 +501,8 @@ function PhaseDetailViewContent({
           }
 
           return (
-            <Card className="mb-6 border border-gray-100 shadow-sm">
-              <CardHeader className="bg-gray-50">
+            <Card className="mb-6 border-none rounded-xl shadow-sm overflow-hidden bg-white">
+              <CardHeader className="bg-gray-50 border-b border-gray-100 pb-4">
                 <CardTitle className="text-lg">
                   {currentWeekData.weekLabel} - 学习安排
                 </CardTitle>
@@ -475,11 +532,11 @@ function PhaseDetailViewContent({
                       <div
                         key={dayInfo.date.toISOString()}
                         onClick={() => handleDayClick(dayInfo)}
-                        className={`p-3 rounded-md border flex justify-between items-center transition-all hover:shadow-md ${
+                        className={`p-3 rounded-xl border flex justify-between items-center transition-all hover:shadow-md ${
                           dayInfo.plan 
                             ? hasPracticalSubject
-                              ? 'bg-blue-50 hover:border-primary cursor-pointer border-blue-100' 
-                              : 'bg-white hover:border-primary cursor-pointer'
+                              ? 'bg-pink-50 hover:border-pink-300 cursor-pointer border-pink-200' 
+                              : 'bg-white hover:border-pink-300 cursor-pointer'
                             : 'bg-gray-50 text-gray-400 hover:bg-gray-100 cursor-pointer'
                         }`}
                       >
@@ -489,15 +546,15 @@ function PhaseDetailViewContent({
                           </p>
                           {dayInfo.plan ? (
                             <div>
-                              <p className="text-xs text-primary mt-0.5">
+                              <p className="text-xs text-pink-600 mt-0.5">
                                 {dayInfo.plan.title} (共 {dayInfo.plan.tasks.length} 项任务)
                               </p>
                               {dayInfo.plan.subjects.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {dayInfo.plan.subjects.map((subject, idx) => (
-                                    <span key={idx} className={`px-1.5 py-0.5 text-xs rounded ${
+                                    <span key={idx} className={`px-1.5 py-0.5 text-xs rounded-full ${
                                       isPracticalSubject(subject) 
-                                        ? 'bg-blue-100 text-blue-700'
+                                        ? 'bg-pink-100 text-pink-700'
                                         : 'bg-gray-100 text-gray-600'
                                     }`}>
                                       {subject}
@@ -510,7 +567,7 @@ function PhaseDetailViewContent({
                             <p className="text-xs text-gray-400 mt-0.5">无学习任务</p>
                           )}
                         </div>
-                        {dayInfo.plan && <ArrowRight className="h-4 w-4 text-gray-400" />}
+                        {dayInfo.plan && <ArrowRight className="h-4 w-4 text-pink-400" />}
                       </div>
                     );
                   })}
@@ -522,10 +579,10 @@ function PhaseDetailViewContent({
       ) : groupedWeeklyPlans.length > 0 ? (
         <p className="text-gray-500 text-center py-8">请选择一周查看详细安排。</p>
       ) : (
-        <Card>
+        <Card className="border-none rounded-xl shadow-sm bg-white">
           <CardContent className="py-12 text-center">
             <p className="text-gray-500">此阶段暂无周学习任务安排。</p>
-            <Button variant="outline" className="mt-4" onClick={goBackToStudyPlan}> {/* onClick calls goBackToStudyPlan */}
+            <Button variant="outline" className="mt-4 border-pink-200 text-pink-600 hover:bg-pink-50" onClick={goBackToStudyPlan}>
               返回备考规划
             </Button>
           </CardContent>
@@ -534,7 +591,7 @@ function PhaseDetailViewContent({
 
       {showNoPlanModal && (
          <AlertDialog open={showNoPlanModal} onOpenChange={setShowNoPlanModal}>
-            <AlertDialogContent>
+            <AlertDialogContent className="rounded-xl">
                 <AlertDialogHeader>
                 <AlertDialogTitle>休息一下</AlertDialogTitle>
                 <AlertDialogDescription>
@@ -542,7 +599,7 @@ function PhaseDetailViewContent({
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogAction onClick={() => setShowNoPlanModal(false)}>好的</AlertDialogAction>
+                <AlertDialogAction className="bg-pink-600 hover:bg-pink-700" onClick={() => setShowNoPlanModal(false)}>好的</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
          </AlertDialog>
@@ -555,9 +612,9 @@ function PhaseDetailViewContent({
 export default function PhaseDetailView() {
   return (
     <Suspense fallback={
-      <div className="container flex items-center justify-center min-h-screen">
+      <div className="container flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-primary border-t-transparent animate-spin rounded-full"></div>
+          <div className="h-12 w-12 border-4 border-pink-500 border-t-transparent animate-spin rounded-full"></div>
           <p className="text-lg">正在加载页面...</p>
         </div>
       </div>

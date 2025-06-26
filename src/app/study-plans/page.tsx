@@ -208,7 +208,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
       
       <div className="container max-w-4xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">我的备考规划</h1>
+          <h1 className="text-2xl font-bold text-gray-900">我的备考</h1>
           <div className="flex gap-2">
             <FeedbackDialog source="study_plans">
               <Button variant="outline" className="flex items-center gap-2 text-pink-600 border-pink-600 hover:bg-pink-50">
@@ -217,7 +217,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
               </Button>
             </FeedbackDialog>
             <Button 
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700"
               onClick={(e) => handleNavigation('/survey', e)}
             >
               <Plus className="h-4 w-4" />
@@ -230,7 +230,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
           // 加载状态
           <div className="flex justify-center items-center py-20">
             <div className="flex flex-col items-center gap-3">
-              <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="h-10 w-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
               <p className="text-gray-500">正在加载备考规划...</p>
             </div>
           </div>
@@ -241,7 +241,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
               <h2 className="text-xl font-bold text-gray-900 mb-4">当前备考规划</h2>
               <Card 
                 key={currentPlan?.id}
-                className="overflow-hidden bg-white hover:shadow-md transition-shadow border border-gray-100"
+                className="overflow-hidden bg-white hover:shadow-md transition-shadow border-none rounded-xl shadow-sm"
               >
                 <CardContent className="p-0">
                   <div className="p-6">
@@ -274,7 +274,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
                       </div>
                       
                       <div className="flex items-center gap-3">
-                        <div className="px-4 py-2 bg-blue-50 rounded-md">
+                        <div className="px-4 py-2 bg-pink-50 rounded-md">
                           <p className="text-sm text-gray-500">总天数</p>
                           <p className="font-semibold text-lg">{currentPlan?.totalDays}天</p>
                         </div>
@@ -301,7 +301,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
                           删除规划
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent>
+                      <AlertDialogContent className="rounded-xl">
                         <AlertDialogHeader>
                           <AlertDialogTitle>确定要删除这个备考规划吗？</AlertDialogTitle>
                           <AlertDialogDescription>
@@ -325,7 +325,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 text-pink-600 border-pink-200 hover:bg-pink-50"
                       onClick={(e) => currentPlan && handleNavigation(`/study-plan/${currentPlan.id}`, e)}
                     >
                       <BookOpen className="h-4 w-4" />
@@ -334,7 +334,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
                     
                     <Button
                       size="sm"
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 bg-pink-600 hover:bg-pink-700"
                       onClick={(e) => currentPlan && handleNavigation(`/study-plan/${currentPlan.id}/phase/${getFirstPhaseId(currentPlan)}`, e)}
                     >
                       <PenToolIcon className="h-4 w-4" />
@@ -354,7 +354,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
                   {historyPlans.map((plan) => (
                     <Card 
                       key={plan.id}
-                      className="overflow-hidden bg-white hover:shadow-md transition-shadow border border-gray-100"
+                      className="overflow-hidden bg-white hover:shadow-md transition-shadow border-none rounded-xl shadow-sm"
                     >
                       <CardContent className="p-0">
                         <div className="p-6">
@@ -387,7 +387,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
                             </div>
                             
                             <div className="flex items-center gap-3">
-                              <div className="px-4 py-2 bg-blue-50 rounded-md">
+                              <div className="px-4 py-2 bg-pink-50 rounded-md">
                                 <p className="text-sm text-gray-500">总天数</p>
                                 <p className="font-semibold text-lg">{plan.totalDays}天</p>
                               </div>
@@ -410,7 +410,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
                                 删除规划
                               </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <AlertDialogContent className="rounded-xl">
                               <AlertDialogHeader>
                                 <AlertDialogTitle>确定要删除这个备考规划吗？</AlertDialogTitle>
                                 <AlertDialogDescription>
@@ -434,7 +434,7 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1 text-pink-600 border-pink-200 hover:bg-pink-50"
                             onClick={(e) => handleNavigation(`/study-plan/${plan.id}`, e)}
                           >
                             <BookOpen className="h-4 w-4" />
@@ -450,17 +450,17 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
           </div>
         ) : (
           // 空状态
-          <Card className="bg-white border border-gray-100">
+          <Card className="bg-white border-none rounded-xl shadow-sm">
             <CardContent className="p-10 flex flex-col items-center justify-center">
-              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Calendar className="h-10 w-10 text-gray-400" />
+              <div className="w-20 h-20 rounded-full bg-pink-50 flex items-center justify-center mb-4">
+                <Calendar className="h-10 w-10 text-pink-400" />
               </div>
               <h3 className="text-xl font-medium text-gray-900 mb-2">还没有备考规划</h3>
               <p className="text-gray-500 mb-6 text-center max-w-md">
                 创建个性化备考规划，制定学习目标和进度，系统化备考更高效
               </p>
               <Button 
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700"
                 onClick={(e) => handleNavigation('/survey', e)}
               >
                 <Plus className="h-4 w-4" />
@@ -482,9 +482,9 @@ function StudyPlansContent({ router }: { router: ReturnType<typeof useRouter> })
 export default function StudyPlansPage() {
   return (
     <Suspense fallback={
-      <div className="flex justify-center items-center py-20">
+      <div className="flex justify-center items-center py-20 min-h-screen bg-gray-50">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="h-10 w-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500">加载中...</p>
         </div>
       </div>

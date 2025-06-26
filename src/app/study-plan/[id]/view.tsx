@@ -286,9 +286,9 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
   
   if (loading) {
     return (
-      <div className="container flex items-center justify-center min-h-screen">
+      <div className="container flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-primary border-t-transparent animate-spin rounded-full"></div>
+          <div className="h-12 w-12 border-4 border-pink-500 border-t-transparent animate-spin rounded-full"></div>
           <p className="text-lg">加载备考规划中...</p>
         </div>
       </div>
@@ -297,10 +297,10 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
   
   if (!plan || !plan.id) {
     return (
-      <div className="container flex flex-col items-center justify-center min-h-screen">
+      <div className="container flex flex-col items-center justify-center min-h-screen bg-gray-50">
         <h1 className="text-2xl font-bold mb-4">备考规划不存在</h1>
         <p className="text-gray-500 mb-6">找不到您请求的备考规划，它可能已被删除或您没有访问权限。</p>
-        <Button onClick={() => router.push('/')}>返回首页</Button>
+        <Button className="bg-pink-600 hover:bg-pink-700" onClick={() => router.push('/')}>返回首页</Button>
       </div>
     );
   }
@@ -316,7 +316,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-10 w-10" 
+            className="h-10 w-10 text-pink-600" 
             onClick={() => router.push('/study-plans')}
           >
             <ArrowLeft className="h-5 w-5" />
@@ -335,7 +335,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
                   删除规划
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="rounded-xl">
                 <AlertDialogHeader>
                   <AlertDialogTitle>确定要删除这个备考规划吗？</AlertDialogTitle>
                   <AlertDialogDescription>
@@ -361,11 +361,11 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
         {/* 考情速递 */}
         <div className="mb-6">
           <div 
-            className="flex justify-between items-center mb-2 px-4 py-2 bg-white rounded-lg shadow-sm cursor-pointer"
+            className="flex justify-between items-center mb-2 px-4 py-2 bg-white rounded-xl shadow-sm cursor-pointer"
             onClick={() => toggleSection(1)}
           >
             <div className="flex items-center">
-              <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
+              <BookOpen className="h-5 w-5 mr-2 text-pink-600" />
               <h2 className="font-semibold text-lg">考情速递</h2>
             </div>
             {expandedSection === 1 ? (
@@ -376,7 +376,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
           </div>
           
           {expandedSection === 1 && (
-            <div className="p-4 bg-white rounded-lg shadow-sm">
+            <div className="p-4 bg-white rounded-xl shadow-sm">
               {/* 根据计划标题判断是何种职称考试 */}
               {plan.title && plan.title.includes('初级护师') ? (
                 <>
@@ -401,11 +401,11 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
         {/* 规划总览 */}
         <div className="mb-6">
           <div 
-            className="flex justify-between items-center mb-2 px-4 py-2 bg-white rounded-lg shadow-sm cursor-pointer"
+            className="flex justify-between items-center mb-2 px-4 py-2 bg-white rounded-xl shadow-sm cursor-pointer"
             onClick={() => toggleSection(2)}
           >
             <div className="flex items-center">
-              <Calendar className="h-5 w-5 mr-2 text-blue-600" />
+              <Calendar className="h-5 w-5 mr-2 text-pink-600" />
               <h2 className="font-semibold text-lg">规划总览</h2>
             </div>
             {expandedSection === 2 ? (
@@ -416,14 +416,14 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
           </div>
           
           {expandedSection === 2 && (
-            <div className="p-4 bg-white rounded-lg shadow-sm">
+            <div className="p-4 bg-white rounded-xl shadow-sm">
               {plan.overview || (plan.planData && plan.planData.overview) ? (
                 <p className="mb-4 whitespace-pre-line">{plan.overview || (plan.planData && plan.planData.overview)}</p>
               ) : (
                 <>
                   <p className="mb-4">您的目标是在2026年4月通过初级护师职称考试，根据您选择的&quot;通关模式&quot;生成以下具体备考规划，请查收～</p>
                   
-                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                  <div className="bg-pink-50 p-4 rounded-lg mb-4">
                     <p className="mb-2 text-gray-700">学习将分为3个阶段(不同难度对应不同的阶段):</p>
                     <ul className="list-disc list-inside space-y-1 text-gray-700">
                       <li>基础阶段</li>
@@ -442,7 +442,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
         {/* 阶段具体规划 */}
         <div className="mb-6">
           <h2 className="font-semibold text-lg flex items-center mb-4">
-            <Star className="h-5 w-5 mr-2 text-blue-600" />
+            <Star className="h-5 w-5 mr-2 text-pink-600" />
             阶段具体规划
           </h2>
           
@@ -450,8 +450,8 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
             {safePhases.map((phase) => (
               <Card 
                 key={phase.id} 
-                className={`border-l-4 ${
-                  phase.id === 1 ? 'border-l-blue-500' : 
+                className={`border-l-4 rounded-xl shadow-sm ${
+                  phase.id === 1 ? 'border-l-pink-500' : 
                   phase.id === 2 ? 'border-l-green-500' : 
                   'border-l-purple-500'
                 }`}
@@ -478,7 +478,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
                         <span>完成进度</span>
                         <span>{getPhaseProgress(phase.id)}%</span>
                       </div>
-                      <Progress value={getPhaseProgress(phase.id)} className="h-2 mt-1" />
+                      <Progress value={getPhaseProgress(phase.id)} className="h-2 mt-1 bg-gray-200" />
                     </div>
                   </div>
                   
@@ -490,7 +490,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
                           <ul className="text-sm space-y-1">
                             {(phase.focusAreas || []).map((area: string, i: number) => (
                               <li key={i} className="flex items-start">
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-pink-500 mt-1.5 mr-2"></span>
                                 {area}
                               </li>
                             ))}
@@ -502,7 +502,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
                           <ul className="text-sm space-y-1">
                             {(phase.learningGoals || []).map((goal: string, i: number) => (
                               <li key={i} className="flex items-start">
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-pink-500 mt-1.5 mr-2"></span>
                                 {goal}
                               </li>
                             ))}
@@ -514,7 +514,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
                           <ul className="text-sm space-y-1">
                             {(phase.recommendedResources || []).map((resource: string, i: number) => (
                               <li key={i} className="flex items-start">
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-pink-500 mt-1.5 mr-2"></span>
                                 {resource}
                               </li>
                             ))}
@@ -524,7 +524,7 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
                       
                       <Button 
                         size="sm" 
-                        className="mt-4 w-full"
+                        className="mt-4 w-full bg-pink-600 hover:bg-pink-700"
                         onClick={() => goToPhaseDetail(phase.id)}
                       >
                         查看详细任务
@@ -546,9 +546,9 @@ function StudyPlanViewContent({ planId, router }: { planId: string, router: Retu
 export default function StudyPlanView() {
   return (
     <Suspense fallback={
-      <div className="container flex items-center justify-center min-h-screen">
+      <div className="container flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-primary border-t-transparent animate-spin rounded-full"></div>
+          <div className="h-12 w-12 border-4 border-pink-500 border-t-transparent animate-spin rounded-full"></div>
           <p className="text-lg">加载备考规划中...</p>
         </div>
       </div>
